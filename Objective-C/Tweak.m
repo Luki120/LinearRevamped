@@ -17,12 +17,12 @@ static BOOL isCharging;
 static float currentBattery;
 
 #define kClass(string) NSClassFromString(string)
-#define kFillBarLPMTintColor [UIColor colorWithRed: 1.0 green: 0.84 blue: 0.07 alpha: 1.0];
-#define kLinearBarLPMTintColor [UIColor colorWithRed: 1.0 green: 0.84 blue: 0.07 alpha: 0.5];
-#define kFillBarChargingTintColor [UIColor colorWithRed: 0.20 green: 0.81 blue: 0.37 alpha: 1.0]
-#define kLinearBarChargingTintColor [UIColor colorWithRed: 0.20 green: 0.81 blue: 0.37 alpha: 0.5]
+#define kFillBarLPMTintColor UIColor.systemYellowColor
+#define kLinearBarLPMTintColor [UIColor.systemYellowColor colorWithAlphaComponent: 0.5]
+#define kFillBarChargingTintColor UIColor.systemGreenColor
+#define kLinearBarChargingTintColor [UIColor.systemGreenColor colorWithAlphaComponent: 0.5]
 #define kFillBarLowBatteryTintColor UIColor.systemRedColor
-#define kLinearBarLowBatteryTintColor [UIColor.systemRedColor colorWithAlphaComponent:0.5]
+#define kLinearBarLowBatteryTintColor [UIColor.systemRedColor colorWithAlphaComponent: 0.5]
 
 static void new_setupViews(_UIBatteryView *self, SEL _cmd) {
 
@@ -42,8 +42,6 @@ static void new_setupViews(_UIBatteryView *self, SEL _cmd) {
 	if(![self.linearBar isDescendantOfView: self]) [self addSubview: self.linearBar];
 
 	[self.linearBar.topAnchor constraintEqualToAnchor: self.linearBattery.bottomAnchor constant: 0.5].active = YES;
-	[self.linearBar.leadingAnchor constraintEqualToAnchor: self.leadingAnchor].active = YES;
-	[self.linearBar.trailingAnchor constraintEqualToAnchor: self.trailingAnchor].active = YES;
 	[self.linearBar.widthAnchor constraintEqualToConstant: 26].active = YES;
 	[self.linearBar.heightAnchor constraintEqualToConstant: 3.5].active = YES;
 
