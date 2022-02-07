@@ -56,6 +56,10 @@ final class LinearView: UIView {
 
 		linearBattery.text = String(format: "%.0f%%", currentBattery)
 
+		guard !linearBattery.isDescendant(of: self),
+			!linearBar.isDescendant(of: self),
+			!fillBar.isDescendant(of: linearBar) else { return }
+
 		addSubview(linearBattery)
 		addSubview(linearBar)
 		linearBar.addSubview(fillBar)
