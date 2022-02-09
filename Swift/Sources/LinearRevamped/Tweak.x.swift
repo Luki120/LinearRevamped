@@ -6,11 +6,11 @@ class BatteryHook: ClassHook<UIView> {
 
 	static let targetName = "_UIBatteryView"
 
-	private let linearView = LinearView()
-
 	// orion:new
 
 	func setupViews() {
+
+		let linearView = LinearView()
 
 		linearView.translatesAutoresizingMaskIntoConstraints = false
 
