@@ -12,6 +12,10 @@
 @end
 
 
+@interface _UIStatusBarStringView : UILabel
+@end
+
+
 static BOOL isLPM;
 static BOOL isCharging;
 static float currentBattery;
@@ -155,6 +159,16 @@ static void overrideCommonInit(_UIBatteryView *self, SEL _cmd) {
 
 }
 
+static void (*origSetText)(_UIStatusBarStringView *self, SEL _cmd, NSString *);
+
+static void overrideSetText(_UIStatusBarStringView *self, SEL _cmd, NSString *text) {
+
+	if([text containsString: @"%"]) return;
+
+	origSetText(self, _cmd, text);
+
+}
+
 // - (BOOL)shouldShowBolt;
 
 static BOOL overrideSSB(_UIBatteryView *self, SEL _cmd) { return NO; }
@@ -223,6 +237,7 @@ __attribute__((constructor)) static void init() {
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(_batteryFillColor), (IMP) &overrideBFC, (IMP *) NULL);
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(bodyColor), (IMP) &overrideBC, (IMP *) NULL);
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(pinColor), (IMP) &overridePC, (IMP *) NULL);
+	MSHookMessageEx(kClass(@"_UIStatusBarStringView"), @selector(setText:), (IMP) &overrideSetText, (IMP *) &origSetText);
 
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(linearBar), (IMP) &new_linearBar, "@@:");
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(setLinearBar:), (IMP) &new_setLinearBar, "v@:@");
