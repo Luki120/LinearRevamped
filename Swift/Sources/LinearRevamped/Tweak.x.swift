@@ -1,4 +1,4 @@
-import UIKit
+import LinearRevampedC
 import Orion
 
 
@@ -64,4 +64,13 @@ class BatteryHook: ClassHook<UIView> {
 		return .clear
 	}
 
+}
+
+
+class StringHook: ClassHook<_UIStatusBarStringView> {
+
+	func setText(_ text: String) {
+		guard !text.contains("%") else { return }
+		orig.setText(text)
+	}
 }
