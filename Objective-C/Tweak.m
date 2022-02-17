@@ -9,6 +9,7 @@
 - (void)setupViews;
 - (void)updateViews;
 - (void)updateColors;
+- (void)animateViewWithViews:(UIView *)fillBar linearBar:(UIView *)linearBar currentFillColor:(UIColor *)currentFillColor currentLinearColor:(UIColor *)currentLinearColor;
 @end
 
 
@@ -41,6 +42,7 @@ static void new_setupViews(_UIBatteryView *self, SEL _cmd) {
 
 	self.linearBar = [UIView new];
 	self.linearBar.backgroundColor = UIColor.lightGrayColor;
+	self.linearBar.layer.cornerCurve = kCACornerCurveContinuous;
 	self.linearBar.layer.cornerRadius = 2;
 	self.linearBar.translatesAutoresizingMaskIntoConstraints = NO;
 	if(![self.linearBar isDescendantOfView: self]) [self addSubview: self.linearBar];
@@ -53,6 +55,7 @@ static void new_setupViews(_UIBatteryView *self, SEL _cmd) {
 
 	self.fillBar = [UIView new];
 	self.fillBar.backgroundColor = UIColor.whiteColor;
+	self.fillBar.layer.cornerCurve = kCACornerCurveContinuous;
 	self.fillBar.layer.cornerRadius = 2;
 	if(![self.fillBar isDescendantOfView: self.linearBar]) [self.linearBar addSubview: self.fillBar];
 
@@ -75,49 +78,32 @@ static void new_updateViews(_UIBatteryView *self, SEL _cmd) {
 
 static void new_updateColors(_UIBatteryView *self, SEL _cmd) {
 
-	if(currentBattery <=20 && !isCharging) {
+	if(currentBattery <=20 && !isCharging)
 
-		[UIView animateWithDuration:0.5 delay:0 options:UIViewAnimationOptionOverrideInheritedCurve animations:^{
+		[self animateViewWithViews:self.fillBar linearBar:self.linearBar currentFillColor:kFillBarLowBatteryTintColor currentLinearColor:kLinearBarLowBatteryTintColor];
 
-			self.fillBar.backgroundColor = kFillBarLowBatteryTintColor;
-			self.linearBar.backgroundColor = kLinearBarLowBatteryTintColor;
+	if(isCharging)
 
-		} completion:nil];
+		[self animateViewWithViews:self.fillBar linearBar:self.linearBar currentFillColor:kFillBarChargingTintColor currentLinearColor:kLinearBarChargingTintColor];
 
-	}
+	if(isLPM)
 
-	if(isCharging) {
+		[self animateViewWithViews:self.fillBar linearBar:self.linearBar currentFillColor:kFillBarLPMTintColor currentLinearColor:kLinearBarLPMTintColor];
 
-		[UIView animateWithDuration:0.5 delay:0 options:UIViewAnimationOptionOverrideInheritedCurve animations:^{
+	else if(!isCharging && !isLPM && currentBattery > 20)
 
-			self.fillBar.backgroundColor = kFillBarChargingTintColor;
-			self.linearBar.backgroundColor = kLinearBarChargingTintColor;
+		[self animateViewWithViews:self.fillBar linearBar:self.linearBar currentFillColor:UIColor.whiteColor currentLinearColor:UIColor.lightGrayColor];
 
-		} completion:nil];
+}
 
-	}
+static void new_animateViewWithViews(_UIBatteryView *self, SEL _cmd, UIView *fillBar, UIView *linearBar, UIColor *currentFillColor, UIColor *currentLinearColor) {
 
-	if(isLPM) {
+	[UIView animateWithDuration:0.5 delay:0 options:UIViewAnimationOptionOverrideInheritedCurve animations:^{
 
-		[UIView animateWithDuration:0.5 delay:0 options:UIViewAnimationOptionOverrideInheritedCurve animations:^{
+		fillBar.backgroundColor = currentFillColor;
+		linearBar.backgroundColor = currentLinearColor;
 
-			self.fillBar.backgroundColor = kFillBarLPMTintColor;
-			self.linearBar.backgroundColor = kLinearBarLPMTintColor;
-
-		} completion:nil];
-
-	}
-
-	else if(!isCharging && !isLPM && currentBattery > 20) {
-
-		[UIView animateWithDuration:0.5 delay:0 options:UIViewAnimationOptionOverrideInheritedCurve animations:^{
-
-			self.fillBar.backgroundColor = UIColor.whiteColor;
-			self.linearBar.backgroundColor = UIColor.lightGrayColor;
-
-		} completion:nil];
-
-	}
+	} completion:nil];
 
 }
 
@@ -249,5 +235,6 @@ __attribute__((constructor)) static void init() {
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(setupViews), (IMP) &new_setupViews, "v@:");
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(updateViews), (IMP) &new_updateViews, "v@:");
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(updateColors), (IMP) &new_updateColors, "v@:");
+	class_addMethod(kClass(@"_UIBatteryView"), @selector(animateViewWithViews:linearBar:currentFillColor:currentLinearColor:), (IMP) &new_animateViewWithViews, "v@:@@@@");
 
 }
