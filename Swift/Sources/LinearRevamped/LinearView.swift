@@ -13,6 +13,7 @@ final class LinearView: UIView {
 
 	private let linearBar: UIView = {
 		let view = UIView()
+		view.layer.cornerCurve = .continuous
 		view.layer.cornerRadius = 2
 		view.translatesAutoresizingMaskIntoConstraints = false
 		return view
@@ -20,6 +21,7 @@ final class LinearView: UIView {
 
 	private let fillBar: UIView = {
 		let view = UIView()
+		view.layer.cornerCurve = .continuous
 		view.layer.cornerRadius = 2
 		return view
 	}()
