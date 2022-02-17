@@ -89,34 +89,32 @@ final class LinearView: UIView {
 	@objc private func updateColors() {
 
 		// not great but.. :bThisIsHowItIs:
+		// edit: still not great, but much better, I can sleep a bit better now
 
 		if currentBattery <= 20 && !BatteryState.isCharging && !BatteryState.isLPM {
-			UIView.animate(withDuration: 0.5, delay: 0, options: .overrideInheritedCurve, animations: {
-				self.fillBar.backgroundColor = self.kFillBarLowBatteryTintColor
-				self.linearBar.backgroundColor = self.kLinearBarLowBatteryTintColor
-			}, completion: nil)
+			animateViewWithViews(self.fillBar, self.linearBar, self.kFillBarLowBatteryTintColor, self.kLinearBarLowBatteryTintColor)
 		}
 
 		if BatteryState.isCharging {
-			UIView.animate(withDuration: 0.5, delay: 0, options: .overrideInheritedCurve, animations: {
-				self.fillBar.backgroundColor = self.kFillBarChargingTintColor
-				self.linearBar.backgroundColor = self.kLinearBarChargingTintColor
-			}, completion: nil)
+			animateViewWithViews(self.fillBar, self.linearBar, self.kFillBarChargingTintColor, self.kLinearBarChargingTintColor)
 		}
 
 		else if BatteryState.isLPM {
-			UIView.animate(withDuration: 0.5, delay: 0, options: .overrideInheritedCurve, animations: {
-				self.fillBar.backgroundColor = self.kFillBarLPMTintColor
-				self.linearBar.backgroundColor = self.kLinearBarLPMTintColor
-			}, completion: nil)
+			animateViewWithViews(self.fillBar, self.linearBar, self.kFillBarLPMTintColor, self.kLinearBarLPMTintColor)
 		}
 
 		else if !BatteryState.isCharging && !BatteryState.isLPM && currentBattery > 20 {
-			UIView.animate(withDuration: 0.5, delay: 0, options: .overrideInheritedCurve, animations: {
-				self.fillBar.backgroundColor = .white
-				self.linearBar.backgroundColor = .lightGray
-			}, completion: nil)
+			animateViewWithViews(self.fillBar, self.linearBar, .white, .lightGray)
 		}
+
+	}
+
+	private func animateViewWithViews(_ fillBar: UIView, _ linearBar: UIView, _ currentFillColor: UIColor, _ currentLinearColor: UIColor) {
+
+		UIView.animate(withDuration: 0.5, delay: 0, options: .overrideInheritedCurve, animations: {
+			fillBar.backgroundColor = currentFillColor
+			linearBar.backgroundColor = currentLinearColor
+		}, completion: nil)		
 
 	}
 
