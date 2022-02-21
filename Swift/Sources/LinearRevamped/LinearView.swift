@@ -90,24 +90,16 @@ final class LinearView: UIView {
 
 	@objc private func updateColors() {
 
-		// not great but.. :bThisIsHowItIs:
-		// edit: still not great, but much better, I can sleep a bit better now
-
-		if currentBattery <= 20 && !BatteryState.isCharging && !BatteryState.isLPM {
-			animateViewWithViews(self.fillBar, self.linearBar, self.kFillBarLowBatteryTintColor, self.kLinearBarLowBatteryTintColor)
-		}
-
-		if BatteryState.isCharging {
-			animateViewWithViews(self.fillBar, self.linearBar, self.kFillBarChargingTintColor, self.kLinearBarChargingTintColor)
-		}
-
-		else if BatteryState.isLPM {
+		if BatteryState.isLPM {
 			animateViewWithViews(self.fillBar, self.linearBar, self.kFillBarLPMTintColor, self.kLinearBarLPMTintColor)
 		}
-
-		else if !BatteryState.isCharging && !BatteryState.isLPM && currentBattery > 20 {
-			animateViewWithViews(self.fillBar, self.linearBar, .white, .lightGray)
+		else if currentBattery <= 20 {
+			animateViewWithViews(self.fillBar, self.linearBar, self.kFillBarLowBatteryTintColor, self.kLinearBarLowBatteryTintColor)
+		} 
+		else if BatteryState.isCharging {
+			animateViewWithViews(self.fillBar, self.linearBar, self.kFillBarChargingTintColor, self.kLinearBarChargingTintColor)
 		}
+		else { animateViewWithViews(self.fillBar, self.linearBar, .white, .lightGray) }
 
 	}
 
