@@ -26,14 +26,9 @@
 static BOOL isLPM;
 static BOOL isCharging;
 static float currentBattery;
+static UIColor* stockColor;
 
 #define kClass(string) NSClassFromString(string)
-#define kFillBarLPMTintColor UIColor.systemYellowColor
-#define kLinearBarLPMTintColor [UIColor.systemYellowColor colorWithAlphaComponent: 0.5]
-#define kFillBarChargingTintColor UIColor.systemGreenColor
-#define kLinearBarChargingTintColor [UIColor.systemGreenColor colorWithAlphaComponent: 0.5]
-#define kFillBarLowBatteryTintColor UIColor.systemRedColor
-#define kLinearBarLowBatteryTintColor [UIColor.systemRedColor colorWithAlphaComponent: 0.5]
 
 static void new_setupViews(_UIBatteryView *self, SEL _cmd) {
 
@@ -102,49 +97,7 @@ static void new_updateViews(_UIBatteryView *self, SEL _cmd) {
 }
 
 static void new_updateColors(_UIBatteryView *self, SEL _cmd) {
-
-	if(isLPM) {
-
-		[self animateViewWithViews:self.fillBar
-			linearBar:self.linearBar
-			currentFillColor:kFillBarLPMTintColor
-			currentLinearColor:kLinearBarLPMTintColor
-		];
-
-	}
-
-	else if(self.lowBattery) {
-
-		[self animateViewWithViews:self.fillBar
-			linearBar:self.linearBar
-			currentFillColor:kFillBarLowBatteryTintColor
-			currentLinearColor:kLinearBarLowBatteryTintColor
-		];
-
-	}
-
-	else if(isCharging) {
-
-		[self animateViewWithViews:self.fillBar linearBar:
-			self.linearBar
-			currentFillColor:kFillBarChargingTintColor
-			currentLinearColor:kLinearBarChargingTintColor
-		];
-
-	}
-
-	else {
-
-		[self animateViewWithViews:self.fillBar
-			linearBar:self.linearBar
-			currentFillColor:UIColor.whiteColor
-			currentLinearColor:UIColor.lightGrayColor
-		];
-
-	}
-
-	[self shouldAnimateChargingBolt];
-
+    [self animateViewWithViews:self.fillBar linearBar:self.linearBar currentFillColor:stockColor currentLinearColor:[stockColor colorWithAlphaComponent: 0.5]];
 }
 
 static void new_shouldAnimateChargingBolt(_UIBatteryView *self, SEL _cmd) {
@@ -223,8 +176,15 @@ static void overrideSetText(_UIStatusBarStringView *self, SEL _cmd, NSString *te
 static BOOL overrideSSB(_UIBatteryView *self, SEL _cmd) { return NO; }
 
 // - (id)_batteryFillColor;
+static UIColor* (*origBatteryFillColor)(_UIBatteryView *self, SEL _cmd);
 
-static id overrideBFC(_UIBatteryView *self, SEL _cmd) { return UIColor.clearColor; }
+static id overrideBFC(_UIBatteryView *self, SEL _cmd) {
+	stockColor = origBatteryFillColor(self, _cmd);
+
+	[self updateColors];
+
+    return UIColor.clearColor; 
+}
 
 // - (id)bodyColor;
 
@@ -295,7 +255,7 @@ __attribute__((constructor)) static void init() {
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(setChargingState:), (IMP) &overrideSetChargingState, (IMP *) &origSetChargingState);
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(setSaverModeActive:), (IMP) &overrideSetSaverModeActive, (IMP *) &origSetSaverModeActive);
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(_shouldShowBolt), (IMP) &overrideSSB, (IMP *) NULL);
-	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(_batteryFillColor), (IMP) &overrideBFC, (IMP *) NULL);
+	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(_batteryFillColor), (IMP) &overrideBFC, (IMP *) &origBatteryFillColor);
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(bodyColor), (IMP) &overrideBC, (IMP *) NULL);
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(pinColor), (IMP) &overridePC, (IMP *) NULL);
 	MSHookMessageEx(kClass(@"_UIStatusBarStringView"), @selector(setText:), (IMP) &overrideSetText, (IMP *) &origSetText);
