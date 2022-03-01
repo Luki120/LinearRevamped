@@ -23,8 +23,6 @@
 @end
 
 
-static BOOL isLPM;
-static BOOL isCharging;
 static float currentBattery;
 static UIColor* stockColor;
 
@@ -127,26 +125,6 @@ static void new_animateViewWithViews(
 
 }
 
-static void (*origSetChargingState)(_UIBatteryView *self, SEL _cmd, NSInteger);
-
-static void overrideSetChargingState(_UIBatteryView *self, SEL _cmd, NSInteger state) {
-
-	origSetChargingState(self, _cmd, state);
-	isCharging = state == 1;
-	[self updateColors];
-
-}
-
-static void (*origSetSaverModeActive)(_UIBatteryView *self, SEL _cmd, BOOL);
-
-static void overrideSetSaverModeActive(_UIBatteryView *self, SEL _cmd, BOOL active) {
-
-	origSetSaverModeActive(self, _cmd, active);
-	isLPM = active;
-	[self updateColors];
-
-}
-
 static void (*origCommonInit)(_UIBatteryView *self, SEL _cmd);
 
 static void overrideCommonInit(_UIBatteryView *self, SEL _cmd) {
@@ -166,7 +144,8 @@ static void (*origSetText)(_UIStatusBarStringView *self, SEL _cmd, NSString *);
 
 static void overrideSetText(_UIStatusBarStringView *self, SEL _cmd, NSString *text) {
 
-	if([text containsString: @"%"]) return;
+	if([text containsString: @"%"]) return origSetText(self, _cmd, @"");
+
 	origSetText(self, _cmd, text);
 
 }
@@ -179,7 +158,9 @@ static BOOL overrideSSB(_UIBatteryView *self, SEL _cmd) { return NO; }
 static UIColor* (*origBatteryFillColor)(_UIBatteryView *self, SEL _cmd);
 
 static id overrideBFC(_UIBatteryView *self, SEL _cmd) {
-	stockColor = origBatteryFillColor(self, _cmd);
+    // The alpha value is set here because iOS sometimes makes it semi-transparent
+    // Without this it would look funny in wireless carplay.
+	stockColor = [origBatteryFillColor(self, _cmd) colorWithAlphaComponent: 1];
 
 	[self updateColors];
 
@@ -252,8 +233,6 @@ static void new_setChargingBoltImageView(_UIBatteryView *self, SEL _cmd, UIImage
 __attribute__((constructor)) static void init() {
 
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(_commonInit), (IMP) &overrideCommonInit, (IMP *) &origCommonInit);
-	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(setChargingState:), (IMP) &overrideSetChargingState, (IMP *) &origSetChargingState);
-	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(setSaverModeActive:), (IMP) &overrideSetSaverModeActive, (IMP *) &origSetSaverModeActive);
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(_shouldShowBolt), (IMP) &overrideSSB, (IMP *) NULL);
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(_batteryFillColor), (IMP) &overrideBFC, (IMP *) &origBatteryFillColor);
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(bodyColor), (IMP) &overrideBC, (IMP *) NULL);
