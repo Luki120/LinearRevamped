@@ -155,12 +155,12 @@ static void overrideSetText(_UIStatusBarStringView *self, SEL _cmd, NSString *te
 static BOOL overrideSSB(_UIBatteryView *self, SEL _cmd) { return NO; }
 
 // - (id)_batteryFillColor;
-static UIColor* (*origBatteryFillColor)(_UIBatteryView *self, SEL _cmd);
+static UIColor* (*origBFC)(_UIBatteryView *self, SEL _cmd);
 
 static id overrideBFC(_UIBatteryView *self, SEL _cmd) {
     // The alpha value is set here because iOS sometimes makes it semi-transparent
     // Without this it would look funny in wireless carplay.
-	stockColor = [origBatteryFillColor(self, _cmd) colorWithAlphaComponent: 1];
+	stockColor = [origBFC(self, _cmd) colorWithAlphaComponent: 1];
 
 	[self updateColors];
 
@@ -234,7 +234,7 @@ __attribute__((constructor)) static void init() {
 
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(_commonInit), (IMP) &overrideCommonInit, (IMP *) &origCommonInit);
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(_shouldShowBolt), (IMP) &overrideSSB, (IMP *) NULL);
-	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(_batteryFillColor), (IMP) &overrideBFC, (IMP *) &origBatteryFillColor);
+	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(_batteryFillColor), (IMP) &overrideBFC, (IMP *) &origBFC);
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(bodyColor), (IMP) &overrideBC, (IMP *) NULL);
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(pinColor), (IMP) &overridePC, (IMP *) NULL);
 	MSHookMessageEx(kClass(@"_UIStatusBarStringView"), @selector(setText:), (IMP) &overrideSetText, (IMP *) &origSetText);
