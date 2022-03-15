@@ -97,6 +97,7 @@ static void new_updateViews(_UIBatteryView *self, SEL _cmd) {
 
 static void new_updateColors(_UIBatteryView *self, SEL _cmd) {
     [self animateViewWithViews:self.fillBar linearBar:self.linearBar currentFillColor:stockColor currentLinearColor:[stockColor colorWithAlphaComponent: 0.5]];
+	[self shouldAnimateChargingBolt];
 }
 
 static void new_shouldAnimateChargingBolt(_UIBatteryView *self, SEL _cmd) {
