@@ -11,7 +11,6 @@ class BatteryHook: ClassHook<UIView> {
 	func setupViews() {
 
 		let linearView = LinearView()
-		linearView.translatesAutoresizingMaskIntoConstraints = false
 		target.addSubview(linearView)
 
 		linearView.topAnchor.constraint(equalTo: target.topAnchor).isActive = true
@@ -21,24 +20,9 @@ class BatteryHook: ClassHook<UIView> {
 
 	}
 
-	/*--- in the objc version a simple call of updateColors() works,
-	here? Oh no, it won't work reliably for some fucking reason,
-	so I had to move all the color logic to the LinearView class
-	and use notifications :deadaf: I prefer this approach anyways,
-	there's more encapsulation. I would refactor the objc version to
-	keep consistency between both but there I'm using associated objects
-	to add properties at runtime, and those are cool, so I'll just let it be ---*/
-
 	func setChargingState(_ state: Int) {
 		orig.setChargingState(state)
 		BatteryState.isCharging = state == 1
-		NotificationCenter.default.post(name: Notification.Name("updateColors"), object: nil)
-	}
-
-	func setSaverModeActive(_ active: Bool) {
-		orig.setSaverModeActive(active)
-		BatteryState.isLPM = active
-		NotificationCenter.default.post(name: Notification.Name("updateColors"), object: nil)
 	}
 
 	func _commonInit() {
@@ -51,6 +35,8 @@ class BatteryHook: ClassHook<UIView> {
 	}
 
 	func _batteryFillColor() -> UIColor {
+		BatteryState.stockColor = orig._batteryFillColor().withAlphaComponent(1)
+		NotificationCenter.default.post(name: Notification.Name("updateColors"), object: nil)
 		return .clear
 	}
 
@@ -70,7 +56,7 @@ class StringHook: ClassHook<UILabel> {
 	static let targetName = "_UIStatusBarStringView"
 
 	func setText(_ text: String) {
-		guard !text.contains("%") else { return }
+		guard !text.contains("%") else { return orig.setText("") }
 		orig.setText(text)
 	}
 }

@@ -26,14 +26,17 @@ final class LinearView: UIView {
 		return view
 	}()
 
-	private var currentBattery = 0.0
+	private let chargingBoltImageView: UIImageView = {
+		let imageView = UIImageView()
+		imageView.alpha = 0
+		imageView.tintColor = .label
+		imageView.clipsToBounds = true
+		imageView.translatesAutoresizingMaskIntoConstraints = false
+		return imageView
+	}()
 
-	private let kFillBarLPMTintColor = UIColor.systemYellow
-	private let kLinearBarLPMTintColor = UIColor.systemYellow.withAlphaComponent(0.5)
-	private let kFillBarChargingTintColor = UIColor.systemGreen
-	private let kLinearBarChargingTintColor = UIColor.systemGreen.withAlphaComponent(0.5)
-	private let kFillBarLowBatteryTintColor = UIColor.systemRed
-	private let kLinearBarLowBatteryTintColor = UIColor.systemRed.withAlphaComponent(0.5)
+	private var currentBattery = 0.0
+	private let kImagePath = "/Library/Application Support/LinearRevamped/LRChargingBolt.png"
 
 	init() {
 
@@ -56,14 +59,21 @@ final class LinearView: UIView {
 
 	private func setupViews() {
 
+		translatesAutoresizingMaskIntoConstraints = false
+
 		linearBattery.text = String(format: "%.0f%%", currentBattery)
+
+		guard let boltImage = UIImage(contentsOfFile: kImagePath) else { return }
+		chargingBoltImageView.image = boltImage.withRenderingMode(.alwaysTemplate)
 
 		guard !linearBattery.isDescendant(of: self),
 			!linearBar.isDescendant(of: self),
+			!chargingBoltImageView.isDescendant(of: self),
 			!fillBar.isDescendant(of: linearBar) else { return }
 
 		addSubview(linearBattery)
 		addSubview(linearBar)
+		addSubview(chargingBoltImageView)
 		linearBar.addSubview(fillBar)
 
 		linearBattery.topAnchor.constraint(equalTo: topAnchor).isActive = true
@@ -72,6 +82,11 @@ final class LinearView: UIView {
 		linearBar.topAnchor.constraint(equalTo: linearBattery.bottomAnchor, constant: 0.5).isActive = true
 		linearBar.widthAnchor.constraint(equalToConstant: 26).isActive = true
 		linearBar.heightAnchor.constraint(equalToConstant: 3.5).isActive = true
+
+		chargingBoltImageView.centerYAnchor.constraint(equalTo: linearBattery.centerYAnchor).isActive = true
+		chargingBoltImageView.leadingAnchor.constraint(equalTo: linearBattery.trailingAnchor).isActive = true
+		chargingBoltImageView.widthAnchor.constraint(equalToConstant: 7.5).isActive = true
+		chargingBoltImageView.heightAnchor.constraint(equalToConstant: 7.5).isActive = true
 
 		fillBar.frame = CGRect(x: 0, y: 0, width: floor((currentBattery / 100) * 26), height: 3.5)
 
@@ -90,24 +105,26 @@ final class LinearView: UIView {
 
 	@objc private func updateColors() {
 
-		if BatteryState.isLPM {
-			animateViewWithViews(self.fillBar, self.linearBar, self.kFillBarLPMTintColor, self.kLinearBarLPMTintColor)
-		}
-		else if currentBattery <= 20 {
-			animateViewWithViews(self.fillBar, self.linearBar, self.kFillBarLowBatteryTintColor, self.kLinearBarLowBatteryTintColor)
-		} 
-		else if BatteryState.isCharging {
-			animateViewWithViews(self.fillBar, self.linearBar, self.kFillBarChargingTintColor, self.kLinearBarChargingTintColor)
-		}
-		else { animateViewWithViews(self.fillBar, self.linearBar, .white, .lightGray) }
+		animateViewWithViews(
+			self.fillBar,
+			self.linearBar,
+			BatteryState.stockColor,
+			BatteryState.stockColor.withAlphaComponent(0.5)
+		)
 
 	}
 
-	private func animateViewWithViews(_ fillBar: UIView, _ linearBar: UIView, _ currentFillColor: UIColor, _ currentLinearColor: UIColor) {
+	private func animateViewWithViews(
+		_ fillBar: UIView,
+		_ linearBar: UIView,
+		_ currentFillColor: UIColor,
+		_ currentLinearColor: UIColor
+	) {
 
 		UIView.animate(withDuration: 0.5, delay: 0, options: .overrideInheritedCurve, animations: {
 			fillBar.backgroundColor = currentFillColor
 			linearBar.backgroundColor = currentLinearColor
+			self.chargingBoltImageView.alpha = BatteryState.isCharging ? 1 : 0
 		}, completion: nil)		
 
 	}
@@ -119,5 +136,6 @@ enum BatteryState {
 
 	static var isLPM = false
 	static var isCharging = false
+	static var stockColor = UIColor.white
 
 }
