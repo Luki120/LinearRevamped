@@ -24,6 +24,7 @@
 
 
 static float currentBattery;
+static BOOL isCharging;
 static UIColor* stockColor;
 
 #define kClass(string) NSClassFromString(string)
@@ -122,6 +123,18 @@ static void new_animateViewWithViews(
 		linearBar.backgroundColor = currentLinearColor;
 
 	} completion:nil];
+
+}
+
+
+static void (*origSetChargingState)(_UIBatteryView *self, SEL _cmd, NSInteger);
+
+static void overrideSetChargingState(_UIBatteryView *self, SEL _cmd, NSInteger state) {
+
+	origSetChargingState(self, _cmd, state);
+	isCharging = state == 1;
+
+	[self updateColors];
 
 }
 
@@ -233,6 +246,7 @@ static void new_setChargingBoltImageView(_UIBatteryView *self, SEL _cmd, UIImage
 __attribute__((constructor)) static void init() {
 
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(_commonInit), (IMP) &overrideCommonInit, (IMP *) &origCommonInit);
+	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(setChargingState:), (IMP) &overrideSetChargingState, (IMP *) &origSetChargingState);
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(_shouldShowBolt), (IMP) &overrideSSB, (IMP *) NULL);
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(_batteryFillColor), (IMP) &overrideBFC, (IMP *) &origBFC);
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(bodyColor), (IMP) &overrideBC, (IMP *) NULL);
