@@ -6,10 +6,16 @@
 @property (nonatomic, strong) UIView *fillBar;
 @property (nonatomic, strong) UIView *linearBar;
 @property (nonatomic, strong) UILabel *linearBattery;
+@property (nonatomic, strong) UIImageView *chargingBoltImageView;
+@property (assign, getter=isLowBattery, nonatomic, readonly) BOOL lowBattery;
 - (void)setupViews;
 - (void)updateViews;
 - (void)updateColors;
-- (void)animateViewWithViews:(UIView *)fillBar linearBar:(UIView *)linearBar currentFillColor:(UIColor *)currentFillColor currentLinearColor:(UIColor *)currentLinearColor;
+- (void)shouldAnimateChargingBolt;
+- (void)animateViewWithViews:(UIView *)fillBar
+	linearBar:(UIView *)linearBar
+	currentFillColor:(UIColor *)currentFillColor
+	currentLinearColor:(UIColor *)currentLinearColor;
 @end
 
 
@@ -30,6 +36,10 @@ static float currentBattery;
 #define kLinearBarLowBatteryTintColor [UIColor.systemRedColor colorWithAlphaComponent: 0.5]
 
 static void new_setupViews(_UIBatteryView *self, SEL _cmd) {
+
+	/*--- TODO:
+	• refactor to use 2 stack views, one horizontal inside a vertical one
+	• not rn tho, I'm lazy ---*/
 
 	self.linearBattery = [UILabel new];
 	self.linearBattery.font = [UIFont boldSystemFontOfSize:8];
@@ -59,6 +69,21 @@ static void new_setupViews(_UIBatteryView *self, SEL _cmd) {
 	self.fillBar.layer.cornerRadius = 2;
 	if(![self.fillBar isDescendantOfView: self.linearBar]) [self.linearBar addSubview: self.fillBar];
 
+	UIImage *chargingBoltImage = [[UIImage imageWithContentsOfFile: @"/Library/Application Support/LinearRevamped/LRChargingBolt.png"] imageWithRenderingMode: UIImageRenderingModeAlwaysTemplate];
+
+	self.chargingBoltImageView = [UIImageView new];
+	self.chargingBoltImageView.alpha = 0;
+	self.chargingBoltImageView.image = chargingBoltImage;
+	self.chargingBoltImageView.tintColor = UIColor.labelColor;
+	self.chargingBoltImageView.clipsToBounds = YES;
+	self.chargingBoltImageView.translatesAutoresizingMaskIntoConstraints = NO;
+	if(![self.chargingBoltImageView isDescendantOfView: self]) [self addSubview: self.chargingBoltImageView];
+
+	[self.chargingBoltImageView.centerYAnchor constraintEqualToAnchor: self.linearBattery.centerYAnchor].active = YES;
+	[self.chargingBoltImageView.leadingAnchor constraintEqualToAnchor: self.linearBattery.trailingAnchor].active = YES;
+	[self.chargingBoltImageView.widthAnchor constraintEqualToConstant: 7.5].active = YES;
+	[self.chargingBoltImageView.heightAnchor constraintEqualToConstant: 7.5].active = YES;
+
 }
 
 static void new_updateViews(_UIBatteryView *self, SEL _cmd) {
@@ -78,25 +103,67 @@ static void new_updateViews(_UIBatteryView *self, SEL _cmd) {
 
 static void new_updateColors(_UIBatteryView *self, SEL _cmd) {
 
-	if(currentBattery <=20 && !isCharging)
+	if(isLPM) {
 
-		[self animateViewWithViews:self.fillBar linearBar:self.linearBar currentFillColor:kFillBarLowBatteryTintColor currentLinearColor:kLinearBarLowBatteryTintColor];
+		[self animateViewWithViews:self.fillBar
+			linearBar:self.linearBar
+			currentFillColor:kFillBarLPMTintColor
+			currentLinearColor:kLinearBarLPMTintColor
+		];
 
-	if(isCharging)
+	}
 
-		[self animateViewWithViews:self.fillBar linearBar:self.linearBar currentFillColor:kFillBarChargingTintColor currentLinearColor:kLinearBarChargingTintColor];
+	else if(self.lowBattery) {
 
-	if(isLPM)
+		[self animateViewWithViews:self.fillBar
+			linearBar:self.linearBar
+			currentFillColor:kFillBarLowBatteryTintColor
+			currentLinearColor:kLinearBarLowBatteryTintColor
+		];
 
-		[self animateViewWithViews:self.fillBar linearBar:self.linearBar currentFillColor:kFillBarLPMTintColor currentLinearColor:kLinearBarLPMTintColor];
+	}
 
-	else if(!isCharging && !isLPM && currentBattery > 20)
+	else if(isCharging) {
 
-		[self animateViewWithViews:self.fillBar linearBar:self.linearBar currentFillColor:UIColor.whiteColor currentLinearColor:UIColor.lightGrayColor];
+		[self animateViewWithViews:self.fillBar linearBar:
+			self.linearBar
+			currentFillColor:kFillBarChargingTintColor
+			currentLinearColor:kLinearBarChargingTintColor
+		];
+
+	}
+
+	else {
+
+		[self animateViewWithViews:self.fillBar
+			linearBar:self.linearBar
+			currentFillColor:UIColor.whiteColor
+			currentLinearColor:UIColor.lightGrayColor
+		];
+
+	}
+
+	[self shouldAnimateChargingBolt];
 
 }
 
-static void new_animateViewWithViews(_UIBatteryView *self, SEL _cmd, UIView *fillBar, UIView *linearBar, UIColor *currentFillColor, UIColor *currentLinearColor) {
+static void new_shouldAnimateChargingBolt(_UIBatteryView *self, SEL _cmd) {
+
+	[UIView animateWithDuration:0.5 delay:0 options:UIViewAnimationOptionOverrideInheritedCurve animations:^{
+
+		self.chargingBoltImageView.alpha = isCharging ? 1 : 0;
+
+	} completion:nil];
+
+}
+
+static void new_animateViewWithViews(
+	_UIBatteryView *self,
+	SEL _cmd,
+	UIView *fillBar,
+	UIView *linearBar,
+	UIColor *currentFillColor,
+	UIColor *currentLinearColor) {
 
 	[UIView animateWithDuration:0.5 delay:0 options:UIViewAnimationOptionOverrideInheritedCurve animations:^{
 
@@ -113,7 +180,6 @@ static void overrideSetChargingState(_UIBatteryView *self, SEL _cmd, NSInteger s
 
 	origSetChargingState(self, _cmd, state);
 	isCharging = state == 1;
-
 	[self updateColors];
 
 }
@@ -124,7 +190,6 @@ static void overrideSetSaverModeActive(_UIBatteryView *self, SEL _cmd, BOOL acti
 
 	origSetSaverModeActive(self, _cmd, active);
 	isLPM = active;
-
 	[self updateColors];
 
 }
@@ -134,7 +199,6 @@ static void (*origCommonInit)(_UIBatteryView *self, SEL _cmd);
 static void overrideCommonInit(_UIBatteryView *self, SEL _cmd) {
 
 	origCommonInit(self, _cmd);
-
 	[[UIDevice currentDevice] setBatteryMonitoringEnabled: YES];
 
 	[NSNotificationCenter.defaultCenter removeObserver:self];
@@ -150,7 +214,6 @@ static void (*origSetText)(_UIStatusBarStringView *self, SEL _cmd, NSString *);
 static void overrideSetText(_UIStatusBarStringView *self, SEL _cmd, NSString *text) {
 
 	if([text containsString: @"%"]) return;
-
 	origSetText(self, _cmd, text);
 
 }
@@ -213,6 +276,18 @@ static void new_setLinearBattery(_UIBatteryView *self, SEL _cmd, UILabel *newLin
 
 }
 
+static UIImageView *new_chargingBoltImageView(_UIBatteryView *self, SEL _cmd) {
+
+	return objc_getAssociatedObject(self, @selector(chargingBoltImageView));
+
+}
+
+static void new_setChargingBoltImageView(_UIBatteryView *self, SEL _cmd, UIImageView *newChargingBoltImageView) {
+
+	objc_setAssociatedObject(self, @selector(chargingBoltImageView), newChargingBoltImageView, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+
+}
+
 
 __attribute__((constructor)) static void init() {
 
@@ -231,10 +306,13 @@ __attribute__((constructor)) static void init() {
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(setFillBar:), (IMP) &new_setFillBar, "v@:@");
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(linearBattery), (IMP) &new_linearBattery, "@@:");
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(setLinearBattery:), (IMP) &new_setLinearBattery, "v@:@");
+	class_addMethod(kClass(@"_UIBatteryView"), @selector(chargingBoltImageView), (IMP) &new_chargingBoltImageView, "@@:");
+	class_addMethod(kClass(@"_UIBatteryView"), @selector(setChargingBoltImageView:), (IMP) &new_setChargingBoltImageView, "v@:@");
 
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(setupViews), (IMP) &new_setupViews, "v@:");
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(updateViews), (IMP) &new_updateViews, "v@:");
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(updateColors), (IMP) &new_updateColors, "v@:");
+	class_addMethod(kClass(@"_UIBatteryView"), @selector(shouldAnimateChargingBolt), (IMP) &new_shouldAnimateChargingBolt, "v@:");
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(animateViewWithViews:linearBar:currentFillColor:currentLinearColor:), (IMP) &new_animateViewWithViews, "v@:@@@@");
 
 }
