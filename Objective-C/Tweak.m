@@ -25,7 +25,7 @@
 static float currentBattery;
 static BOOL isCharging;
 static UIColor *stockColor;
-static NSString *const kImagePath = @"/Library/Application Support/LinearRevamped/LRChargingBolt.png";
+static NSString *const kImagePath = @"/var/mobile/Documents/LinearRevamped/LRChargingBolt.png";
 
 #define kClass(string) NSClassFromString(string)
 

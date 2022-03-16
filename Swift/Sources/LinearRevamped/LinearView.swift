@@ -36,7 +36,7 @@ final class LinearView: UIView {
 	}()
 
 	private var currentBattery = 0.0
-	private let kImagePath = "/Library/Application Support/LinearRevamped/LRChargingBolt.png"
+	private let kImagePath = "/var/mobile/Documents/LinearRevamped/LRChargingBolt.png"
 
 	init() {
 
@@ -134,7 +134,6 @@ final class LinearView: UIView {
 
 enum BatteryState {
 
-	static var isLPM = false
 	static var isCharging = false
 	static var stockColor = UIColor.white
 
