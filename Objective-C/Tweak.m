@@ -11,7 +11,6 @@
 - (void)setupViews;
 - (void)updateViews;
 - (void)updateColors;
-- (void)shouldAnimateChargingBolt;
 - (void)animateViewWithViews:(UIView *)fillBar
 	linearBar:(UIView *)linearBar
 	currentFillColor:(UIColor *)currentFillColor
@@ -25,15 +24,14 @@
 
 static float currentBattery;
 static BOOL isCharging;
-static UIColor* stockColor;
+static UIColor *stockColor;
+static NSString *const kImagePath = @"/Library/Application Support/LinearRevamped/LRChargingBolt.png";
 
 #define kClass(string) NSClassFromString(string)
 
 static void new_setupViews(_UIBatteryView *self, SEL _cmd) {
 
-	/*--- TODO:
-	• refactor to use 2 stack views, one horizontal inside a vertical one
-	• not rn tho, I'm lazy ---*/
+	// TODO: refactor to use 2 stack views, one horizontal inside a vertical one
 
 	self.linearBattery = [UILabel new];
 	self.linearBattery.font = [UIFont boldSystemFontOfSize:8];
@@ -63,7 +61,7 @@ static void new_setupViews(_UIBatteryView *self, SEL _cmd) {
 	self.fillBar.layer.cornerRadius = 2;
 	if(![self.fillBar isDescendantOfView: self.linearBar]) [self.linearBar addSubview: self.fillBar];
 
-	UIImage *chargingBoltImage = [[UIImage imageWithContentsOfFile: @"/Library/Application Support/LinearRevamped/LRChargingBolt.png"] imageWithRenderingMode: UIImageRenderingModeAlwaysTemplate];
+	UIImage *chargingBoltImage = [[UIImage imageWithContentsOfFile:kImagePath] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
 
 	self.chargingBoltImageView = [UIImageView new];
 	self.chargingBoltImageView.alpha = 0;
@@ -86,27 +84,17 @@ static void new_updateViews(_UIBatteryView *self, SEL _cmd) {
 
 	self.linearBattery.text = @"";
 	self.linearBattery.text = [NSString stringWithFormat:@"%0.f%%", currentBattery];
-
-	/*--- ugh I love constraints but tbh they wouldn't update the bar
-	here despite I was doing it correctly (pretty sure) and testing this
-	obviously it's time consuming, so I took the ez way out :frCoal: ---*/
-
 	self.fillBar.frame = CGRectMake(0,0, floor((currentBattery / 100) * 26), 3.5);
 
 }
 
 static void new_updateColors(_UIBatteryView *self, SEL _cmd) {
-    [self animateViewWithViews:self.fillBar linearBar:self.linearBar currentFillColor:stockColor currentLinearColor:[stockColor colorWithAlphaComponent: 0.5]];
-	[self shouldAnimateChargingBolt];
-}
 
-static void new_shouldAnimateChargingBolt(_UIBatteryView *self, SEL _cmd) {
-
-	[UIView animateWithDuration:0.5 delay:0 options:UIViewAnimationOptionOverrideInheritedCurve animations:^{
-
-		self.chargingBoltImageView.alpha = isCharging ? 1 : 0;
-
-	} completion:nil];
+	[self animateViewWithViews:self.fillBar
+		linearBar:self.linearBar
+		currentFillColor:stockColor
+		currentLinearColor:[stockColor colorWithAlphaComponent: 0.5]
+	];
 
 }
 
@@ -122,6 +110,7 @@ static void new_animateViewWithViews(
 
 		fillBar.backgroundColor = currentFillColor;
 		linearBar.backgroundColor = currentLinearColor;
+		self.chargingBoltImageView.alpha = isCharging ? 1 : 0;
 
 	} completion:nil];
 
@@ -159,7 +148,6 @@ static void (*origSetText)(_UIStatusBarStringView *self, SEL _cmd, NSString *);
 static void overrideSetText(_UIStatusBarStringView *self, SEL _cmd, NSString *text) {
 
 	if([text containsString: @"%"]) return origSetText(self, _cmd, @"");
-
 	origSetText(self, _cmd, text);
 
 }
@@ -168,32 +156,32 @@ static void overrideSetText(_UIStatusBarStringView *self, SEL _cmd, NSString *te
 
 static BOOL overrideSSB(_UIBatteryView *self, SEL _cmd) { return NO; }
 
-// - (id)_batteryFillColor;
-static UIColor* (*origBFC)(_UIBatteryView *self, SEL _cmd);
+// - (UIColor *)_batteryFillColor;
 
-static id overrideBFC(_UIBatteryView *self, SEL _cmd) {
-    // The alpha value is set here because iOS sometimes makes it semi-transparent
-    // Without this it would look funny in wireless carplay.
+static UIColor *(*origBFC)(_UIBatteryView *self, SEL _cmd);
+
+static UIColor *overrideBFC(_UIBatteryView *self, SEL _cmd) {
+
 	stockColor = [origBFC(self, _cmd) colorWithAlphaComponent: 1];
-
 	[self updateColors];
 
     return UIColor.clearColor; 
+
 }
 
-// - (id)bodyColor;
+// - (UIColor *)bodyColor;
 
-static id overrideBC(_UIBatteryView *self, SEL _cmd) { return UIColor.clearColor; }
+static UIColor *overrideBC(_UIBatteryView *self, SEL _cmd) { return UIColor.clearColor; }
 
-// - (id)pinColor;
+// - (UIColor *)pinColor;
 
-static id overridePC(_UIBatteryView *self, SEL _cmd) { return UIColor.clearColor; }
+static UIColor *overridePC(_UIBatteryView *self, SEL _cmd) { return UIColor.clearColor; }
 
 // getters and setters
 
 /*--- sadly we can't use class_addProperty here since 
 we need a backing ivar, and we can't add ivars to an
-existing class at runtime :/ ---*/
+existing class at runtime ---*/
 
 static UIView *new_linearBar(_UIBatteryView *self, SEL _cmd) {
 
@@ -266,7 +254,6 @@ __attribute__((constructor)) static void init() {
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(setupViews), (IMP) &new_setupViews, "v@:");
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(updateViews), (IMP) &new_updateViews, "v@:");
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(updateColors), (IMP) &new_updateColors, "v@:");
-	class_addMethod(kClass(@"_UIBatteryView"), @selector(shouldAnimateChargingBolt), (IMP) &new_shouldAnimateChargingBolt, "v@:");
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(animateViewWithViews:linearBar:currentFillColor:currentLinearColor:), (IMP) &new_animateViewWithViews, "v@:@@@@");
 
 }
