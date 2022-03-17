@@ -31,16 +31,12 @@ static NSString *const kImagePath = @"/var/mobile/Documents/LinearRevamped/LRCha
 
 static void new_setupViews(_UIBatteryView *self, SEL _cmd) {
 
-	// TODO: refactor to use 2 stack views, one horizontal inside a vertical one
-
 	self.linearBattery = [UILabel new];
-	self.linearBattery.font = [UIFont boldSystemFontOfSize:8];
+	self.linearBattery.font = [UIFont boldSystemFontOfSize:7];
 	self.linearBattery.text = [NSString stringWithFormat:@"%0.f%%", currentBattery];
 	self.linearBattery.textAlignment = NSTextAlignmentCenter;
 	self.linearBattery.translatesAutoresizingMaskIntoConstraints = NO;
 	if(![self.linearBattery isDescendantOfView: self]) [self addSubview: self.linearBattery];
-
-	[self.linearBattery.topAnchor constraintEqualToAnchor: self.topAnchor].active = YES;
 
 	self.linearBar = [UIView new];
 	self.linearBar.backgroundColor = UIColor.lightGrayColor;
@@ -49,19 +45,14 @@ static void new_setupViews(_UIBatteryView *self, SEL _cmd) {
 	self.linearBar.translatesAutoresizingMaskIntoConstraints = NO;
 	if(![self.linearBar isDescendantOfView: self]) [self addSubview: self.linearBar];
 
-	[self.linearBar.topAnchor constraintEqualToAnchor: self.linearBattery.bottomAnchor constant: 0.5].active = YES;
-	[self.linearBar.widthAnchor constraintEqualToConstant: 26].active = YES;
-	[self.linearBar.heightAnchor constraintEqualToConstant: 3.5].active = YES;
-
-	[self.linearBattery.centerXAnchor constraintEqualToAnchor: self.linearBar.centerXAnchor].active = YES;
-
 	self.fillBar = [UIView new];
 	self.fillBar.backgroundColor = UIColor.whiteColor;
 	self.fillBar.layer.cornerCurve = kCACornerCurveContinuous;
 	self.fillBar.layer.cornerRadius = 2;
 	if(![self.fillBar isDescendantOfView: self.linearBar]) [self.linearBar addSubview: self.fillBar];
 
-	UIImage *chargingBoltImage = [[UIImage imageWithContentsOfFile:kImagePath] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+	UIImage *chargingBoltImage = [UIImage imageWithContentsOfFile: kImagePath];
+	chargingBoltImage = [chargingBoltImage imageWithRenderingMode: UIImageRenderingModeAlwaysTemplate];
 
 	self.chargingBoltImageView = [UIImageView new];
 	self.chargingBoltImageView.alpha = 0;
@@ -71,8 +62,17 @@ static void new_setupViews(_UIBatteryView *self, SEL _cmd) {
 	self.chargingBoltImageView.translatesAutoresizingMaskIntoConstraints = NO;
 	if(![self.chargingBoltImageView isDescendantOfView: self]) [self addSubview: self.chargingBoltImageView];
 
+	// layout
+
+	[self.linearBar.topAnchor constraintEqualToAnchor: self.linearBattery.bottomAnchor constant: 0.5].active = YES;
+	[self.linearBar.widthAnchor constraintEqualToConstant: 26].active = YES;
+	[self.linearBar.heightAnchor constraintEqualToConstant: 3.5].active = YES;
+
+	[self.linearBattery.topAnchor constraintEqualToAnchor: self.topAnchor].active = YES;
+	[self.linearBattery.centerXAnchor constraintEqualToAnchor: self.linearBar.centerXAnchor].active = YES;
+
 	[self.chargingBoltImageView.centerYAnchor constraintEqualToAnchor: self.linearBattery.centerYAnchor].active = YES;
-	[self.chargingBoltImageView.leadingAnchor constraintEqualToAnchor: self.linearBattery.trailingAnchor].active = YES;
+	[self.chargingBoltImageView.leadingAnchor constraintEqualToAnchor: self.linearBattery.trailingAnchor constant: -0.8].active = YES;
 	[self.chargingBoltImageView.widthAnchor constraintEqualToConstant: 7.5].active = YES;
 	[self.chargingBoltImageView.heightAnchor constraintEqualToConstant: 7.5].active = YES;
 
@@ -83,6 +83,13 @@ static void new_updateViews(_UIBatteryView *self, SEL _cmd) {
 	currentBattery = [UIDevice currentDevice].batteryLevel * 100;
 
 	self.linearBattery.text = @"";
+
+	CATransition *transition = [CATransition animation];
+	transition.type = kCATransitionFade;
+	transition.duration = 0.8;
+	transition.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+	[self.linearBattery.layer addAnimation:transition forKey:nil];
+
 	self.linearBattery.text = [NSString stringWithFormat:@"%0.f%%", currentBattery];
 	self.fillBar.frame = CGRectMake(0,0, floor((currentBattery / 100) * 26), 3.5);
 
