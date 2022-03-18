@@ -5,7 +5,7 @@ final class LinearView: UIView {
 
 	private let linearBattery: UILabel = {
 		let label = UILabel()
-		label.font = UIFont.boldSystemFont(ofSize: 8)
+		label.font = UIFont.boldSystemFont(ofSize: 7)
 		label.textAlignment = .center
 		label.translatesAutoresizingMaskIntoConstraints = false
 		return label
@@ -36,7 +36,6 @@ final class LinearView: UIView {
 	}()
 
 	private var currentBattery = 0.0
-	private let kImagePath = "/var/mobile/Documents/LinearRevamped/LRChargingBolt.png"
 
 	init() {
 
@@ -63,6 +62,7 @@ final class LinearView: UIView {
 
 		linearBattery.text = String(format: "%.0f%%", currentBattery)
 
+		let kImagePath = "/var/mobile/Documents/LinearRevamped/LRChargingBolt.png"
 		guard let boltImage = UIImage(contentsOfFile: kImagePath) else { return }
 		chargingBoltImageView.image = boltImage.withRenderingMode(.alwaysTemplate)
 
@@ -84,7 +84,7 @@ final class LinearView: UIView {
 		linearBar.heightAnchor.constraint(equalToConstant: 3.5).isActive = true
 
 		chargingBoltImageView.centerYAnchor.constraint(equalTo: linearBattery.centerYAnchor).isActive = true
-		chargingBoltImageView.leadingAnchor.constraint(equalTo: linearBattery.trailingAnchor).isActive = true
+		chargingBoltImageView.leadingAnchor.constraint(equalTo: linearBattery.trailingAnchor, constant: -0.5).isActive = true
 		chargingBoltImageView.widthAnchor.constraint(equalToConstant: 7.5).isActive = true
 		chargingBoltImageView.heightAnchor.constraint(equalToConstant: 7.5).isActive = true
 
@@ -97,6 +97,13 @@ final class LinearView: UIView {
 		currentBattery = Double(UIDevice.current.batteryLevel * 100)
 
 		linearBattery.text = ""
+
+		let transition = CATransition()
+		transition.duration = 0.8
+		transition.type = CATransitionType.fade
+		transition.timingFunction = CAMediaTimingFunction(name: CAMediaTimingFunctionName.easeInEaseOut)
+		linearBattery.layer.add(transition, forKey: nil)
+
 		linearBattery.text = String(format: "%.0f%%", currentBattery)
 
 		fillBar.frame = CGRect(x: 0, y: 0, width: floor((currentBattery / 100) * 26), height: 3.5)
