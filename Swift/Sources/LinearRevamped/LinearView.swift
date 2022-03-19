@@ -11,21 +11,6 @@ final class LinearView: UIView {
 		return label
 	}()
 
-	private let linearBar: UIView = {
-		let view = UIView()
-		view.layer.cornerCurve = .continuous
-		view.layer.cornerRadius = 2
-		view.translatesAutoresizingMaskIntoConstraints = false
-		return view
-	}()
-
-	private let fillBar: UIView = {
-		let view = UIView()
-		view.layer.cornerCurve = .continuous
-		view.layer.cornerRadius = 2
-		return view
-	}()
-
 	private let chargingBoltImageView: UIImageView = {
 		let imageView = UIImageView()
 		imageView.alpha = 0
@@ -35,7 +20,11 @@ final class LinearView: UIView {
 		return imageView
 	}()
 
+	private var linearBar: UIView!
+	private var fillBar: UIView!
 	private var currentBattery = 0.0
+
+	// MARK: Lifecyle
 
 	init() {
 
@@ -58,23 +47,27 @@ final class LinearView: UIView {
 
 	private func setupViews() {
 
-		translatesAutoresizingMaskIntoConstraints = false
-
 		linearBattery.text = String(format: "%.0f%%", currentBattery)
 
 		let kImagePath = "/var/mobile/Documents/LinearRevamped/LRChargingBolt.png"
 		guard let boltImage = UIImage(contentsOfFile: kImagePath) else { return }
 		chargingBoltImageView.image = boltImage.withRenderingMode(.alwaysTemplate)
 
-		guard !linearBattery.isDescendant(of: self),
-			!linearBar.isDescendant(of: self),
-			!chargingBoltImageView.isDescendant(of: self),
-			!fillBar.isDescendant(of: linearBar) else { return }
+		linearBar = setupUIView(unleashesConstraints: true)
+		fillBar = setupUIView(unleashesConstraints: false)
 
 		addSubview(linearBattery)
 		addSubview(linearBar)
 		addSubview(chargingBoltImageView)
 		linearBar.addSubview(fillBar)
+
+		setupLayout()
+
+	}
+
+	private func setupLayout() {
+
+		translatesAutoresizingMaskIntoConstraints = false
 
 		linearBattery.topAnchor.constraint(equalTo: topAnchor).isActive = true
 		linearBattery.centerXAnchor.constraint(equalTo: linearBar.centerXAnchor).isActive = true
@@ -91,6 +84,35 @@ final class LinearView: UIView {
 		fillBar.frame = CGRect(x: 0, y: 0, width: floor((currentBattery / 100) * 26), height: 3.5)
 
 	}
+
+	// MARK: Reusable funcs
+
+	private func setupUIView(unleashesConstraints: Bool) -> UIView {
+
+		let view = UIView()
+		view.layer.cornerCurve = .continuous
+		view.layer.cornerRadius = 2
+		if unleashesConstraints { view.translatesAutoresizingMaskIntoConstraints = false }
+		return view
+
+	}
+
+	private func animateViewWithViews(
+		_ fillBar: UIView,
+		_ linearBar: UIView,
+		_ currentFillColor: UIColor,
+		_ currentLinearColor: UIColor
+	) {
+
+		UIView.animate(withDuration: 0.5, delay: 0, options: .overrideInheritedCurve, animations: {
+			fillBar.backgroundColor = currentFillColor
+			linearBar.backgroundColor = currentLinearColor
+			self.chargingBoltImageView.alpha = BatteryState.isCharging ? 1 : 0
+		}, completion: nil)
+
+	}
+
+	// MARK: Selectors
 
 	@objc private func updateViews() {
 
@@ -118,21 +140,6 @@ final class LinearView: UIView {
 			BatteryState.stockColor,
 			BatteryState.stockColor.withAlphaComponent(0.5)
 		)
-
-	}
-
-	private func animateViewWithViews(
-		_ fillBar: UIView,
-		_ linearBar: UIView,
-		_ currentFillColor: UIColor,
-		_ currentLinearColor: UIColor
-	) {
-
-		UIView.animate(withDuration: 0.5, delay: 0, options: .overrideInheritedCurve, animations: {
-			fillBar.backgroundColor = currentFillColor
-			linearBar.backgroundColor = currentLinearColor
-			self.chargingBoltImageView.alpha = BatteryState.isCharging ? 1 : 0
-		}, completion: nil)		
 
 	}
 
