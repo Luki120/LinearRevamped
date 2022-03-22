@@ -12,7 +12,6 @@
 - (void)updateViews;
 - (void)updateColors;
 - (void)createUIViewWithView:(UIView *)view
-	withBackgroundColor:(UIColor *)color
 	unleashesConstraints:(BOOL)unleashes;
 - (void)animateViewWithViews:(UIView *)fillBar
 	linearBar:(UIView *)linearBar
@@ -36,22 +35,17 @@ static void new_setupViews(_UIBatteryView *self, SEL _cmd) {
 	self.linearBattery = [UILabel new];
 	self.linearBattery.font = [UIFont boldSystemFontOfSize:7];
 	self.linearBattery.text = [NSString stringWithFormat:@"%0.f%%", currentBattery];
+	self.linearBattery.textColor = UIColor.labelColor;
 	self.linearBattery.textAlignment = NSTextAlignmentCenter;
 	self.linearBattery.translatesAutoresizingMaskIntoConstraints = NO;
 	if(![self.linearBattery isDescendantOfView: self]) [self addSubview: self.linearBattery];
 
 	self.linearBar = [UIView new];
-	[self createUIViewWithView:self.linearBar
-		withBackgroundColor:UIColor.lightGrayColor
-		unleashesConstraints:NO
-	];
+	[self createUIViewWithView:self.linearBar unleashesConstraints:YES];
 	if(![self.linearBar isDescendantOfView: self]) [self addSubview: self.linearBar];
 
 	self.fillBar = [UIView new];
-	[self createUIViewWithView:self.fillBar
-		withBackgroundColor:UIColor.systemBackgroundColor
-		unleashesConstraints:YES
-	];
+	[self createUIViewWithView:self.fillBar unleashesConstraints:NO];
 	if(![self.fillBar isDescendantOfView: self.linearBar]) [self.linearBar addSubview: self.fillBar];
 
 	NSString *const kImagePath = @"/var/mobile/Documents/LinearRevamped/LRChargingBolt.png";
@@ -113,10 +107,8 @@ static void new_createUIViewWithView(
 	_UIBatteryView *self,
 	SEL _cmd,
 	UIView *view,
-	UIColor *backgroundColor,
 	BOOL unleashesConstraints) {
 
-	view.backgroundColor = backgroundColor;
 	view.layer.cornerCurve = kCACornerCurveContinuous;
 	view.layer.cornerRadius = 2;
 	if(unleashesConstraints) view.translatesAutoresizingMaskIntoConstraints = NO;
@@ -278,7 +270,7 @@ __attribute__((constructor)) static void init() {
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(setupViews), (IMP) &new_setupViews, "v@:");
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(updateViews), (IMP) &new_updateViews, "v@:");
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(updateColors), (IMP) &new_updateColors, "v@:");
-	class_addMethod(kClass(@"_UIBatteryView"), @selector(createUIViewWithView:withBackgroundColor:unleashesConstraints:), (IMP) &new_createUIViewWithView, "v@:@@@");
+	class_addMethod(kClass(@"_UIBatteryView"), @selector(createUIViewWithView:unleashesConstraints:), (IMP) &new_createUIViewWithView, "v@:@@");
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(animateViewWithViews:linearBar:currentFillColor:currentLinearColor:), (IMP) &new_animateViewWithViews, "v@:@@@@");
 
 }
