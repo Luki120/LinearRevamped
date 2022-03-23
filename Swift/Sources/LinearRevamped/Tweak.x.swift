@@ -23,15 +23,12 @@ class BatteryHook: ClassHook<UIView> {
 	func setChargingState(_ state: Int) {
 		orig.setChargingState(state)
 		BatteryState.isCharging = state == 1
+		NotificationCenter.default.post(name: Notification.Name("updateColors"), object: nil)
 	}
 
 	func _commonInit() {
 		orig._commonInit()
 		setupViews()
-	}
-
-	func _shouldShowBolt() -> Bool {
-		return false
 	}
 
 	func _batteryFillColor() -> UIColor {
@@ -40,13 +37,17 @@ class BatteryHook: ClassHook<UIView> {
 		return .clear
 	}
 
-	func bodyColor() -> UIColor {
-		return .clear
-	}
+	func bodyColor() -> UIColor { return .clear }
+	func pinColor() -> UIColor { return .clear }
+	func _shouldShowBolt() -> Bool { return false }
 
-	func pinColor() -> UIColor {
-		return .clear
-	}
+}
+
+
+class BatteryBoltHook: ClassHook<NSObject> {
+
+	static let targetName = "_UIStatusBarBatteryItem"
+	func chargingView() -> UIImageView { return UIImageView() }
 
 }
 
