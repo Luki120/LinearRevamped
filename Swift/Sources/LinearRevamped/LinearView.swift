@@ -20,9 +20,9 @@ final class LinearView: UIView {
 		return imageView
 	}()
 
-	private var linearBar: UIView!
-	private var fillBar: UIView!
 	private var currentBattery = 0.0
+	private var fillBar: UIView!
+	private var linearBar: UIView!
 	private var widthAnchorConstraint: NSLayoutConstraint?
 
 	// MARK: Lifecyle
@@ -33,7 +33,6 @@ final class LinearView: UIView {
 
 		UIDevice.current.isBatteryMonitoringEnabled = true
 
-		NotificationCenter.default.removeObserver(self)
 		NotificationCenter.default.addObserver(self, selector: #selector(updateViews), name: UIDevice.batteryLevelDidChangeNotification, object: nil)
 		NotificationCenter.default.addObserver(self, selector: #selector(updateColors), name: Notification.Name("updateColors"), object: nil)
 
@@ -45,6 +44,8 @@ final class LinearView: UIView {
 	required init?(coder aDecoder: NSCoder) {
 		super.init(coder: aDecoder)
 	}
+
+	deinit { NotificationCenter.default.removeObserver(self) }
 
 	private func setupViews() {
 
@@ -129,8 +130,10 @@ final class LinearView: UIView {
 
 		linearBattery.text = String(format: "%.0f%%", currentBattery)
 
+		let kWidthConstant = CGFloat(floor((currentBattery / 100) * 26))
+
 		widthAnchorConstraint?.isActive = false
-		widthAnchorConstraint = fillBar.widthAnchor.constraint(equalToConstant: CGFloat(floor((currentBattery / 100) * 26)))
+		widthAnchorConstraint = fillBar.widthAnchor.constraint(equalToConstant: kWidthConstant)
 		widthAnchorConstraint?.isActive = true
 
 	}
