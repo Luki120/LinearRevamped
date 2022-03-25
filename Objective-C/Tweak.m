@@ -177,6 +177,9 @@ static void overrideSetText(_UIStatusBarStringView *self, SEL _cmd, NSString *te
 }
 
 // - (UIColor *)_batteryFillColor;
+// - (UIColor *)bodyColor;
+// - (UIColor *)pinColor;
+// - (BOOL)shouldShowBolt;
 
 static UIColor *(*origBFC)(_UIBatteryView *self, SEL _cmd);
 
@@ -189,16 +192,8 @@ static UIColor *overrideBFC(_UIBatteryView *self, SEL _cmd) {
 
 }
 
-// - (UIColor *)bodyColor;
-
 static UIColor *overrideBC(_UIBatteryView *self, SEL _cmd) { return UIColor.clearColor; }
-
-// - (UIColor *)pinColor;
-
 static UIColor *overridePC(_UIBatteryView *self, SEL _cmd) { return UIColor.clearColor; }
-
-// - (BOOL)shouldShowBolt;
-
 static BOOL overrideSSB(_UIBatteryView *self, SEL _cmd) { return NO; }
 
 // getters and setters
