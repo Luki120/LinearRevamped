@@ -20,9 +20,10 @@ final class LinearView: UIView {
 		return imageView
 	}()
 
-	private var linearBar: UIView!
-	private var fillBar: UIView!
 	private var currentBattery = 0.0
+	private var fillBar: UIView!
+	private var linearBar: UIView!
+	private var widthAnchorConstraint: NSLayoutConstraint?
 
 	// MARK: Lifecyle
 
@@ -32,7 +33,6 @@ final class LinearView: UIView {
 
 		UIDevice.current.isBatteryMonitoringEnabled = true
 
-		NotificationCenter.default.removeObserver(self)
 		NotificationCenter.default.addObserver(self, selector: #selector(updateViews), name: UIDevice.batteryLevelDidChangeNotification, object: nil)
 		NotificationCenter.default.addObserver(self, selector: #selector(updateColors), name: Notification.Name("updateColors"), object: nil)
 
@@ -45,6 +45,8 @@ final class LinearView: UIView {
 		super.init(coder: aDecoder)
 	}
 
+	deinit { NotificationCenter.default.removeObserver(self) }
+
 	private func setupViews() {
 
 		linearBattery.text = String(format: "%.0f%%", currentBattery)
@@ -53,8 +55,8 @@ final class LinearView: UIView {
 		guard let boltImage = UIImage(contentsOfFile: kImagePath) else { return }
 		chargingBoltImageView.image = boltImage.withRenderingMode(.alwaysTemplate)
 
-		linearBar = setupUIView(unleashesConstraints: true)
-		fillBar = setupUIView(unleashesConstraints: false)
+		linearBar = setupUIView()
+		fillBar = setupUIView()
 
 		addSubview(linearBattery)
 		addSubview(linearBar)
@@ -76,23 +78,23 @@ final class LinearView: UIView {
 		linearBar.widthAnchor.constraint(equalToConstant: 26).isActive = true
 		linearBar.heightAnchor.constraint(equalToConstant: 3.5).isActive = true
 
+		fillBar.heightAnchor.constraint(equalToConstant: 3.5).isActive = true
+
 		chargingBoltImageView.centerYAnchor.constraint(equalTo: linearBattery.centerYAnchor).isActive = true
 		chargingBoltImageView.leadingAnchor.constraint(equalTo: linearBattery.trailingAnchor, constant: -0.5).isActive = true
 		chargingBoltImageView.widthAnchor.constraint(equalToConstant: 7.5).isActive = true
 		chargingBoltImageView.heightAnchor.constraint(equalToConstant: 7.5).isActive = true
 
-		fillBar.frame = CGRect(x: 0, y: 0, width: floor((currentBattery / 100) * 26), height: 3.5)
-
 	}
 
 	// MARK: Reusable funcs
 
-	private func setupUIView(unleashesConstraints: Bool) -> UIView {
+	private func setupUIView() -> UIView {
 
 		let view = UIView()
 		view.layer.cornerCurve = .continuous
 		view.layer.cornerRadius = 2
-		if unleashesConstraints { view.translatesAutoresizingMaskIntoConstraints = false }
+		view.translatesAutoresizingMaskIntoConstraints = false
 		return view
 
 	}
@@ -128,7 +130,11 @@ final class LinearView: UIView {
 
 		linearBattery.text = String(format: "%.0f%%", currentBattery)
 
-		fillBar.frame = CGRect(x: 0, y: 0, width: floor((currentBattery / 100) * 26), height: 3.5)
+		let kWidthConstant = CGFloat(floor((currentBattery / 100) * 26))
+
+		widthAnchorConstraint?.isActive = false
+		widthAnchorConstraint = fillBar.widthAnchor.constraint(equalToConstant: kWidthConstant)
+		widthAnchorConstraint?.isActive = true
 
 	}
 

@@ -11,11 +11,15 @@
 - (void)setupViews;
 - (void)updateViews;
 - (void)updateColors;
-- (UIView *)setupUIViewWithConstraints:(BOOL)unleashesConstraints;
+- (UIView *)setupUIView;
 - (void)animateViewWithViews:(UIView *)fillBar
 	linearBar:(UIView *)linearBar
 	currentFillColor:(UIColor *)currentFillColor
 	currentLinearColor:(UIColor *)currentLinearColor;
+@end
+
+
+@interface _UIStatusBarBatteryItem : NSObject
 @end
 
 
@@ -26,6 +30,7 @@
 static float currentBattery;
 static BOOL isCharging;
 static UIColor *stockColor;
+static NSLayoutConstraint *fillBarWidthAnchorConstraint;
 
 #define kClass(string) NSClassFromString(string)
 
@@ -39,10 +44,10 @@ static void new_setupViews(_UIBatteryView *self, SEL _cmd) {
 	self.linearBattery.translatesAutoresizingMaskIntoConstraints = NO;
 	if(![self.linearBattery isDescendantOfView: self]) [self addSubview: self.linearBattery];
 
-	self.linearBar = [self setupUIViewWithConstraints: YES];
+	self.linearBar = [self setupUIView];
 	if(![self.linearBar isDescendantOfView: self]) [self addSubview: self.linearBar];
 
-	self.fillBar = [self setupUIViewWithConstraints: NO];
+	self.fillBar = [self setupUIView];
 	if(![self.fillBar isDescendantOfView: self.linearBar]) [self.linearBar addSubview: self.fillBar];
 
 	NSString *const kImagePath = @"/var/mobile/Documents/LinearRevamped/LRChargingBolt.png";
@@ -62,6 +67,8 @@ static void new_setupViews(_UIBatteryView *self, SEL _cmd) {
 	[self.linearBar.topAnchor constraintEqualToAnchor: self.linearBattery.bottomAnchor constant: 0.5].active = YES;
 	[self.linearBar.widthAnchor constraintEqualToConstant: 26].active = YES;
 	[self.linearBar.heightAnchor constraintEqualToConstant: 3.5].active = YES;
+
+	[self.fillBar.heightAnchor constraintEqualToConstant: 3.5].active = YES;
 
 	[self.linearBattery.topAnchor constraintEqualToAnchor: self.topAnchor].active = YES;
 	[self.linearBattery.centerXAnchor constraintEqualToAnchor: self.linearBar.centerXAnchor].active = YES;
@@ -86,7 +93,11 @@ static void new_updateViews(_UIBatteryView *self, SEL _cmd) {
 	[self.linearBattery.layer addAnimation:transition forKey:nil];
 
 	self.linearBattery.text = [NSString stringWithFormat:@"%0.f%%", currentBattery];
-	self.fillBar.frame = CGRectMake(0,0, floor((currentBattery / 100) * 26), 3.5);
+
+	fillBarWidthAnchorConstraint.active = NO;
+	fillBarWidthAnchorConstraint = [self.fillBar.widthAnchor constraintEqualToConstant: floor((currentBattery / 100) * 26)];
+	fillBarWidthAnchorConstraint.active = YES;
+	[self layoutIfNeeded];
 
 }
 
@@ -100,15 +111,12 @@ static void new_updateColors(_UIBatteryView *self, SEL _cmd) {
 
 }
 
-static UIView *new_setupUIViewWithConstraints(
-	_UIBatteryView *self,
-	SEL _cmd,
-	BOOL unleashesConstraints) {
+static UIView *new_setupUIView(_UIBatteryView *self, SEL _cmd) {
 
 	UIView *view = [UIView new];
 	view.layer.cornerCurve = kCACornerCurveContinuous;
 	view.layer.cornerRadius = 2;
-	if(unleashesConstraints) view.translatesAutoresizingMaskIntoConstraints = NO;
+	view.translatesAutoresizingMaskIntoConstraints = NO;
 	return view;
 
 }
@@ -157,6 +165,8 @@ static void overrideCommonInit(_UIBatteryView *self, SEL _cmd) {
 
 }
 
+static UIImageView *overrideChargingView(_UIStatusBarBatteryItem *self, SEL _cmd) { return [UIImageView new]; }
+
 static void (*origSetText)(_UIStatusBarStringView *self, SEL _cmd, NSString *);
 
 static void overrideSetText(_UIStatusBarStringView *self, SEL _cmd, NSString *text) {
@@ -166,11 +176,10 @@ static void overrideSetText(_UIStatusBarStringView *self, SEL _cmd, NSString *te
 
 }
 
-// - (BOOL)shouldShowBolt;
-
-static BOOL overrideSSB(_UIBatteryView *self, SEL _cmd) { return NO; }
-
 // - (UIColor *)_batteryFillColor;
+// - (UIColor *)bodyColor;
+// - (UIColor *)pinColor;
+// - (BOOL)shouldShowBolt;
 
 static UIColor *(*origBFC)(_UIBatteryView *self, SEL _cmd);
 
@@ -183,13 +192,9 @@ static UIColor *overrideBFC(_UIBatteryView *self, SEL _cmd) {
 
 }
 
-// - (UIColor *)bodyColor;
-
 static UIColor *overrideBC(_UIBatteryView *self, SEL _cmd) { return UIColor.clearColor; }
-
-// - (UIColor *)pinColor;
-
 static UIColor *overridePC(_UIBatteryView *self, SEL _cmd) { return UIColor.clearColor; }
+static BOOL overrideSSB(_UIBatteryView *self, SEL _cmd) { return NO; }
 
 // getters and setters
 
@@ -254,6 +259,7 @@ __attribute__((constructor)) static void init() {
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(_batteryFillColor), (IMP) &overrideBFC, (IMP *) &origBFC);
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(bodyColor), (IMP) &overrideBC, (IMP *) NULL);
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(pinColor), (IMP) &overridePC, (IMP *) NULL);
+	MSHookMessageEx(kClass(@"_UIStatusBarBatteryItem"), @selector(chargingView), (IMP) &overrideChargingView, (IMP *) NULL);
 	MSHookMessageEx(kClass(@"_UIStatusBarStringView"), @selector(setText:), (IMP) &overrideSetText, (IMP *) &origSetText);
 
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(linearBar), (IMP) &new_linearBar, "@@:");
@@ -268,7 +274,7 @@ __attribute__((constructor)) static void init() {
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(setupViews), (IMP) &new_setupViews, "v@:");
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(updateViews), (IMP) &new_updateViews, "v@:");
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(updateColors), (IMP) &new_updateColors, "v@:");
-	class_addMethod(kClass(@"_UIBatteryView"), @selector(setupUIViewWithConstraints:), (IMP) &new_setupUIViewWithConstraints, "@@:@");
+	class_addMethod(kClass(@"_UIBatteryView"), @selector(setupUIView), (IMP) &new_setupUIView, "@@:");
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(animateViewWithViews:linearBar:currentFillColor:currentLinearColor:), (IMP) &new_animateViewWithViews, "v@:@@@@");
 
 }
