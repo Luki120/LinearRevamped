@@ -1,6 +1,6 @@
 # LinearRevamped
 
-![LinearRevamped](https://i.imgur.com/HUKappB.png)
+<img src="https://i.imgur.com/HUKappB.png" width="300">
 
 ## Socials
 
