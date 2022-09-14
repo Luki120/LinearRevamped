@@ -7,9 +7,7 @@ class BatteryHook: ClassHook<UIView> {
 	static let targetName = "_UIBatteryView"
 
 	// orion:new
-
 	func setupViews() {
-
 		let linearView = LinearView()
 		target.addSubview(linearView)
 
@@ -17,7 +15,6 @@ class BatteryHook: ClassHook<UIView> {
 		linearView.bottomAnchor.constraint(equalTo: target.bottomAnchor).isActive = true
 		linearView.leadingAnchor.constraint(equalTo: target.leadingAnchor).isActive = true
 		linearView.trailingAnchor.constraint(equalTo: target.trailingAnchor).isActive = true
-
 	}
 
 	func setChargingState(_ state: Int) {

@@ -3,20 +3,22 @@ import UIKit
 
 final class LinearView: UIView {
 
-	private let linearBattery: UILabel = {
+	private lazy var linearBattery: UILabel = {
 		let label = UILabel()
-		label.font = UIFont.boldSystemFont(ofSize: 7)
+		label.font = .boldSystemFont(ofSize: 7)
 		label.textAlignment = .center
 		label.translatesAutoresizingMaskIntoConstraints = false
+		addSubview(label)
 		return label
 	}()
 
-	private let chargingBoltImageView: UIImageView = {
+	private lazy var chargingBoltImageView: UIImageView = {
 		let imageView = UIImageView()
 		imageView.alpha = 0
 		imageView.tintColor = .label
 		imageView.clipsToBounds = true
 		imageView.translatesAutoresizingMaskIntoConstraints = false
+		addSubview(imageView)
 		return imageView
 	}()
 
@@ -25,10 +27,13 @@ final class LinearView: UIView {
 	private var linearBar: UIView!
 	private var widthAnchorConstraint: NSLayoutConstraint?
 
-	// MARK: Lifecyle
+	// ! Lifecyle
+
+	required init?(coder aDecoder: NSCoder) {
+		super.init(coder: aDecoder)
+	}
 
 	init() {
-
 		super.init(frame: .zero)
 
 		UIDevice.current.isBatteryMonitoringEnabled = true
@@ -38,17 +43,11 @@ final class LinearView: UIView {
 
 		setupViews()
 		updateViews()
-
-	}
-
-	required init?(coder aDecoder: NSCoder) {
-		super.init(coder: aDecoder)
 	}
 
 	deinit { NotificationCenter.default.removeObserver(self) }
 
 	private func setupViews() {
-
 		linearBattery.text = String(format: "%.0f%%", currentBattery)
 
 		let kImagePath = "/var/mobile/Documents/LinearRevamped/LRChargingBolt.png"
@@ -58,17 +57,13 @@ final class LinearView: UIView {
 		linearBar = setupUIView()
 		fillBar = setupUIView()
 
-		addSubview(linearBattery)
 		addSubview(linearBar)
-		addSubview(chargingBoltImageView)
 		linearBar.addSubview(fillBar)
 
-		setupLayout()
-
+		layoutViews()
 	}
 
-	private func setupLayout() {
-
+	private func layoutViews() {
 		translatesAutoresizingMaskIntoConstraints = false
 
 		linearBattery.topAnchor.constraint(equalTo: topAnchor).isActive = true
@@ -84,48 +79,46 @@ final class LinearView: UIView {
 		chargingBoltImageView.leadingAnchor.constraint(equalTo: linearBattery.trailingAnchor, constant: -0.5).isActive = true
 		chargingBoltImageView.widthAnchor.constraint(equalToConstant: 7.5).isActive = true
 		chargingBoltImageView.heightAnchor.constraint(equalToConstant: 7.5).isActive = true
-
 	}
 
-	// MARK: Reusable funcs
+	// ! Reusable
 
 	private func setupUIView() -> UIView {
-
 		let view = UIView()
 		view.layer.cornerCurve = .continuous
 		view.layer.cornerRadius = 2
 		view.translatesAutoresizingMaskIntoConstraints = false
 		return view
-
 	}
 
-	private func animateViewWithViews(
-		_ fillBar: UIView,
-		_ linearBar: UIView,
-		_ currentFillColor: UIColor,
-		_ currentLinearColor: UIColor
-	) {
-
-		UIView.animate(withDuration: 0.5, delay: 0, options: .overrideInheritedCurve, animations: {
-			fillBar.backgroundColor = currentFillColor
-			linearBar.backgroundColor = currentLinearColor
+	private func animate(withViews views: [UIView], fillColor: UIColor, linearColor: UIColor) {
+		UIView.animate(withDuration: 0.5, delay: 0, options: .overrideInheritedCurve) {
+			views.first?.backgroundColor = fillColor
+			views[1].backgroundColor = linearColor
 			self.chargingBoltImageView.alpha = BatteryState.isCharging ? 1 : 0
-		}, completion: nil)
+		}
 
 	}
 
-	// MARK: Selectors
+	// ! Selectors
+
+	@objc private func updateColors() {
+		animate(
+			withViews: [fillBar, linearBar],
+			fillColor: BatteryState.stockColor,
+			linearColor: BatteryState.stockColor.withAlphaComponent(0.5)
+		)
+	}
 
 	@objc private func updateViews() {
-
 		currentBattery = Double(UIDevice.current.batteryLevel * 100)
 
 		linearBattery.text = ""
 
 		let transition = CATransition()
 		transition.duration = 0.8
-		transition.type = CATransitionType.fade
-		transition.timingFunction = CAMediaTimingFunction(name: CAMediaTimingFunctionName.easeInEaseOut)
+		transition.type = .fade
+		transition.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
 		linearBattery.layer.add(transition, forKey: nil)
 
 		linearBattery.text = String(format: "%.0f%%", currentBattery)
@@ -138,23 +131,9 @@ final class LinearView: UIView {
 
 	}
 
-	@objc private func updateColors() {
-
-		animateViewWithViews(
-			self.fillBar,
-			self.linearBar,
-			BatteryState.stockColor,
-			BatteryState.stockColor.withAlphaComponent(0.5)
-		)
-
-	}
-
 }
 
-
 enum BatteryState {
-
 	static var isCharging = false
 	static var stockColor = UIColor.white
-
 }

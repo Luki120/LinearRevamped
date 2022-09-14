@@ -1,5 +1,5 @@
+@import CydiaSubstrate;
 @import UIKit;
-#import <substrate.h>
 
 
 @interface _UIBatteryView : UIView
@@ -37,7 +37,7 @@ static NSLayoutConstraint *fillBarWidthAnchorConstraint;
 static void new_setupViews(_UIBatteryView *self, SEL _cmd) {
 
 	self.linearBattery = [UILabel new];
-	self.linearBattery.font = [UIFont boldSystemFontOfSize:7];
+	self.linearBattery.font = [UIFont boldSystemFontOfSize: 7];
 	self.linearBattery.text = [NSString stringWithFormat:@"%0.f%%", currentBattery];
 	self.linearBattery.textColor = UIColor.labelColor;
 	self.linearBattery.textAlignment = NSTextAlignmentCenter;
@@ -45,9 +45,9 @@ static void new_setupViews(_UIBatteryView *self, SEL _cmd) {
 	if(![self.linearBattery isDescendantOfView: self]) [self addSubview: self.linearBattery];
 
 	self.linearBar = [self setupUIView];
-	if(![self.linearBar isDescendantOfView: self]) [self addSubview: self.linearBar];
-
 	self.fillBar = [self setupUIView];
+
+	if(![self.linearBar isDescendantOfView: self]) [self addSubview: self.linearBar];
 	if(![self.fillBar isDescendantOfView: self.linearBar]) [self.linearBar addSubview: self.fillBar];
 
 	NSString *const kImagePath = @"/var/mobile/Documents/LinearRevamped/LRChargingBolt.png";
@@ -63,7 +63,6 @@ static void new_setupViews(_UIBatteryView *self, SEL _cmd) {
 	if(![self.chargingBoltImageView isDescendantOfView: self]) [self addSubview: self.chargingBoltImageView];
 
 	// layout
-
 	[self.linearBar.topAnchor constraintEqualToAnchor: self.linearBattery.bottomAnchor constant: 0.5].active = YES;
 	[self.linearBar.widthAnchor constraintEqualToConstant: 26].active = YES;
 	[self.linearBar.heightAnchor constraintEqualToConstant: 3.5].active = YES;
@@ -89,7 +88,7 @@ static void new_updateViews(_UIBatteryView *self, SEL _cmd) {
 	CATransition *transition = [CATransition animation];
 	transition.type = kCATransitionFade;
 	transition.duration = 0.8;
-	transition.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+	transition.timingFunction = [CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseInEaseOut];
 	[self.linearBattery.layer addAnimation:transition forKey:nil];
 
 	self.linearBattery.text = [NSString stringWithFormat:@"%0.f%%", currentBattery];
@@ -97,7 +96,6 @@ static void new_updateViews(_UIBatteryView *self, SEL _cmd) {
 	fillBarWidthAnchorConstraint.active = NO;
 	fillBarWidthAnchorConstraint = [self.fillBar.widthAnchor constraintEqualToConstant: floor((currentBattery / 100) * 26)];
 	fillBarWidthAnchorConstraint.active = YES;
-	[self layoutIfNeeded];
 
 }
 
@@ -140,7 +138,6 @@ static void new_animateViewWithViews(
 }
 
 static void (*origSetChargingState)(_UIBatteryView *self, SEL _cmd, NSInteger);
-
 static void overrideSetChargingState(_UIBatteryView *self, SEL _cmd, NSInteger state) {
 
 	origSetChargingState(self, _cmd, state);
@@ -151,7 +148,6 @@ static void overrideSetChargingState(_UIBatteryView *self, SEL _cmd, NSInteger s
 }
 
 static void (*origCommonInit)(_UIBatteryView *self, SEL _cmd);
-
 static void overrideCommonInit(_UIBatteryView *self, SEL _cmd) {
 
 	origCommonInit(self, _cmd);
@@ -168,7 +164,6 @@ static void overrideCommonInit(_UIBatteryView *self, SEL _cmd) {
 static UIImageView *overrideChargingView(_UIStatusBarBatteryItem *self, SEL _cmd) { return [UIImageView new]; }
 
 static void (*origSetText)(_UIStatusBarStringView *self, SEL _cmd, NSString *);
-
 static void overrideSetText(_UIStatusBarStringView *self, SEL _cmd, NSString *text) {
 
 	if([text containsString: @"%"]) return origSetText(self, _cmd, @"");
@@ -182,7 +177,6 @@ static void overrideSetText(_UIStatusBarStringView *self, SEL _cmd, NSString *te
 // - (BOOL)shouldShowBolt;
 
 static UIColor *(*origBFC)(_UIBatteryView *self, SEL _cmd);
-
 static UIColor *overrideBFC(_UIBatteryView *self, SEL _cmd) {
 
 	stockColor = [origBFC(self, _cmd) colorWithAlphaComponent: 1];
