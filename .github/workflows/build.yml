@@ -49,7 +49,7 @@ jobs:
 
           export THEOS="$(pwd)/theos"
           for PROJECT in Objective-C/ Swift/ ; do
-            gmake -C "${PROJECT}" clean package TARGET="iphone:clang:16.5:14.0" FINALPACKAGE=1 THEOS_PACKAGE_DIR_NAME="../../packages" THEOS_PACKAGE_SCHEME=rootless
+            gmake -C "${PROJECT}" clean package TARGET="iphone:clang:16.5:14.0" FINALPACKAGE=1 THEOS_PACKAGE_DIR_NAME="../packages" THEOS_PACKAGE_SCHEME=rootless
           done
 
       - name: Upload artifact
