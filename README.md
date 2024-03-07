@@ -1,6 +1,6 @@
 # LinearRevamped
 
-<img src="https://github.com/Luki120/luki120.github.io/tree/master/assets/Tweaks/SpringBoard/LinearRevamped/LinearRevamped.png" width="300">
+<img src="https://raw.githubusercontent.com/Luki120/luki120.github.io/master/assets/Tweaks/SpringBoard/LinearRevamped/LinearRevamped.png" width="300">
 
 ## Socials
 
