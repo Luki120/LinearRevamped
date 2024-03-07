@@ -71,11 +71,12 @@ class UIStatusBarWindowHook: ClassHook<UIWindow> {
 			_PMLowPowerMode.sharedInstance().setPowerMode(!active ? 1 : 0, fromSource: "SpringBoard")
 		}
 		else {
+			guard let _CDBatterySaver = NSClassFromString("_CDBatterySaver") else { return }
 			let state = _CDBatterySaver.shared().getPowerMode()
 
 			switch state {
-				case 0: _CDBatterySaver.shared().setPowerMode(1, error: nil)
-				case 1: _CDBatterySaver.shared().setPowerMode(0, error: nil)
+				case 0: let _ = _CDBatterySaver.shared().setPowerMode(1, error: nil)
+				case 1: let _ = _CDBatterySaver.shared().setPowerMode(0, error: nil)
 				default: break
 			}
 		}
