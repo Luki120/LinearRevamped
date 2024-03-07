@@ -1,3 +1,4 @@
+import libroot
 import UIKit
 
 
@@ -23,34 +24,33 @@ final class LinearView: UIView {
 	}()
 
 	private var currentBattery = 0.0
-	private var fillBar: UIView!
-	private var linearBar: UIView!
+	private var fillBar, linearBar: UIView!
 	private var widthAnchorConstraint: NSLayoutConstraint?
 
 	// ! Lifecyle
 
-	required init?(coder aDecoder: NSCoder) {
-		super.init(coder: aDecoder)
+	required init?(coder: NSCoder) {
+		super.init(coder: coder)
 	}
 
-	init() {
-		super.init(frame: .zero)
+	override init(frame: CGRect) {
+		super.init(frame: frame)
 
 		UIDevice.current.isBatteryMonitoringEnabled = true
 
+		NotificationCenter.default.addObserver(self, selector: #selector(updateColors), name: .didUpdateColorsNotification, object: nil)
 		NotificationCenter.default.addObserver(self, selector: #selector(updateViews), name: UIDevice.batteryLevelDidChangeNotification, object: nil)
-		NotificationCenter.default.addObserver(self, selector: #selector(updateColors), name: Notification.Name("updateColors"), object: nil)
 
-		setupViews()
+		setupUI()
 		updateViews()
 	}
 
-	deinit { NotificationCenter.default.removeObserver(self) }
+	// ! Private
 
-	private func setupViews() {
+	private func setupUI() {
 		linearBattery.text = String(format: "%.0f%%", currentBattery)
 
-		let kImagePath = "/var/mobile/Documents/LinearRevamped/LRChargingBolt.png"
+		let kImagePath = jbRootPath("/Library/Tweak Support/LinearRevamped/LRChargingBolt.png")
 		guard let boltImage = UIImage(contentsOfFile: kImagePath) else { return }
 		chargingBoltImageView.image = boltImage.withRenderingMode(.alwaysTemplate)
 
@@ -60,10 +60,10 @@ final class LinearView: UIView {
 		addSubview(linearBar)
 		linearBar.addSubview(fillBar)
 
-		layoutViews()
+		layoutUI()
 	}
 
-	private func layoutViews() {
+	private func layoutUI() {
 		translatesAutoresizingMaskIntoConstraints = false
 
 		linearBattery.topAnchor.constraint(equalTo: topAnchor).isActive = true
@@ -111,29 +111,48 @@ final class LinearView: UIView {
 	}
 
 	@objc private func updateViews() {
-		currentBattery = Double(UIDevice.current.batteryLevel * 100)
+		currentBattery = CGFloat(UIDevice.current.batteryLevel * 100)
 
 		linearBattery.text = ""
 
 		let transition = CATransition()
 		transition.duration = 0.8
 		transition.type = .fade
-		transition.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+		transition.timingFunction = .init(name: .easeInEaseOut)
 		linearBattery.layer.add(transition, forKey: nil)
 
 		linearBattery.text = String(format: "%.0f%%", currentBattery)
 
-		let kWidthConstant = CGFloat(floor((currentBattery / 100) * 26))
-
 		widthAnchorConstraint?.isActive = false
-		widthAnchorConstraint = fillBar.widthAnchor.constraint(equalToConstant: kWidthConstant)
+		widthAnchorConstraint = fillBar.widthAnchor.constraint(equalToConstant: floor((currentBattery / 100) * 26))
 		widthAnchorConstraint?.isActive = true
 
+	}
+
+	// ! Rootless support
+
+	// https://gist.github.com/leptos-null/4098d557ffab3d0edd8c1b4eab19c06d
+	private func jbRootPath(_ cPath: UnsafePointer<CChar>?) -> String {
+		String(unsafeUninitializedCapacity: Int(PATH_MAX)) { buffer in
+			guard let resolved = libroot_dyn_jbrootpath(cPath, buffer.baseAddress) else { return 0 }
+			return strlen(resolved)
+		}
+	}
+
+	@_disfavoredOverload
+	private func jbRootPath<S: StringProtocol>(_ path: S) -> String {
+		path.withCString { cPath in
+			jbRootPath(cPath)
+		}
 	}
 
 }
 
 enum BatteryState {
 	static var isCharging = false
-	static var stockColor = UIColor.white
+	static var stockColor: UIColor = .label
+}
+
+extension Notification.Name {
+	static let didUpdateColorsNotification = Notification.Name("didUpdateColorsNotification")
 }

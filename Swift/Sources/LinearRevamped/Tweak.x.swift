@@ -1,10 +1,8 @@
+import LinearRevampedC
 import Orion
-import UIKit
 
 
-class BatteryHook: ClassHook<UIView> {
-
-	static let targetName = "_UIBatteryView"
+class BatteryHook: ClassHook<_UIBatteryView> {
 
 	// orion:new
 	func setupViews() {
@@ -17,20 +15,31 @@ class BatteryHook: ClassHook<UIView> {
 		linearView.trailingAnchor.constraint(equalTo: target.trailingAnchor).isActive = true
 	}
 
-	func setChargingState(_ state: Int) {
-		orig.setChargingState(state)
-		BatteryState.isCharging = state == 1
-		NotificationCenter.default.post(name: Notification.Name("updateColors"), object: nil)
+	func initWithFrame(_ frame: CGRect) -> Target {
+		let orig = orig.initWithFrame(frame)
+		setupViews()
+		return orig
 	}
 
-	func _commonInit() {
-		orig._commonInit()
-		setupViews()
+	func setChargingState(_ chargingState: Int) {
+		orig.setChargingState(chargingState)
+		BatteryState.isCharging = chargingState == 1
 	}
 
 	func _batteryFillColor() -> UIColor {
-		BatteryState.stockColor = orig._batteryFillColor().withAlphaComponent(1)
-		NotificationCenter.default.post(name: Notification.Name("updateColors"), object: nil)
+		if target.saverModeActive || target.chargingState == 1 {
+			BatteryState.stockColor = orig._batteryFillColor().withAlphaComponent(1)
+		}
+		else {
+			BatteryState.stockColor = .init(
+				hue: CGFloat(UIDevice.current.batteryLevel * 0.333),
+				saturation: 1,
+				brightness: 1,
+				alpha: 1
+			)
+		}
+
+		NotificationCenter.default.post(name: .didUpdateColorsNotification, object: nil)
 		return .clear
 	}
 
@@ -40,6 +49,39 @@ class BatteryHook: ClassHook<UIView> {
 
 }
 
+class UIStatusBarWindowHook: ClassHook<UIWindow> {
+
+	static let targetName = "UIStatusBarWindow"
+
+	func initWithFrame(_ frame: CGRect) -> Target {
+		let orig = orig.initWithFrame(frame)
+
+		let swipeRecognizer = UISwipeGestureRecognizer(target: target, action: #selector(lrDidSwipeLeft))
+		swipeRecognizer.direction = .left
+		target.addGestureRecognizer(swipeRecognizer)
+
+		return orig
+	}
+
+	// orion:new
+	@objc
+	func lrDidSwipeLeft() {
+		if let _PMLowPowerMode = NSClassFromString("_PMLowPowerMode") {
+			let active = _PMLowPowerMode.sharedInstance().getPowerMode() == 1
+			_PMLowPowerMode.sharedInstance().setPowerMode(!active ? 1 : 0, fromSource: "SpringBoard")
+		}
+		else {
+			let state = _CDBatterySaver.shared().getPowerMode()
+
+			switch state {
+				case 0: _CDBatterySaver.shared().setPowerMode(1, error: nil)
+				case 1: _CDBatterySaver.shared().setPowerMode(0, error: nil)
+				default: break
+			}
+		}
+	}
+
+}
 
 class BatteryBoltHook: ClassHook<NSObject> {
 
@@ -47,7 +89,6 @@ class BatteryBoltHook: ClassHook<NSObject> {
 	func chargingView() -> UIImageView { return UIImageView() }
 
 }
-
 
 class StringHook: ClassHook<UILabel> {
 
@@ -57,4 +98,5 @@ class StringHook: ClassHook<UILabel> {
 		guard !text.contains("%") else { return orig.setText("") }
 		orig.setText(text)
 	}
+
 }

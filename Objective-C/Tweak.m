@@ -1,5 +1,24 @@
 @import CydiaSubstrate;
+@import libroot;
 @import UIKit;
+
+
+@interface _CDBatterySaver : NSObject
++ (id)batterySaver;
+- (NSInteger)getPowerMode;
+- (BOOL)setPowerMode:(NSInteger)powerMode error:(id)error;
+@end
+
+
+@interface _PMLowPowerMode : NSObject
++ (id)sharedInstance;
+- (NSInteger)getPowerMode;
+- (void)setPowerMode:(NSInteger)powerMode fromSource:(NSString *)source;
+@end
+
+
+@interface UIStatusBarWindow : UIWindow
+@end
 
 
 @interface _UIBatteryView : UIView
@@ -7,7 +26,9 @@
 @property (nonatomic, strong) UIView *linearBar;
 @property (nonatomic, strong) UILabel *linearBattery;
 @property (nonatomic, strong) UIImageView *chargingBoltImageView;
-@property (assign, getter=isLowBattery, nonatomic, readonly) BOOL lowBattery;
+@property (nonatomic, assign) CGFloat chargePercent;
+@property (nonatomic, assign) NSInteger chargingState;
+@property (nonatomic, assign) BOOL saverModeActive;
 - (void)setupViews;
 - (void)updateViews;
 - (void)updateColors;
@@ -19,20 +40,14 @@
 @end
 
 
-@interface _UIStatusBarBatteryItem : NSObject
-@end
-
-
-@interface _UIStatusBarStringView : UILabel
-@end
-
+@class _UIStatusBarBatteryItem;
+@class _UIStatusBarStringView;
 
 static float currentBattery;
-static BOOL isCharging;
 static UIColor *stockColor;
-static NSLayoutConstraint *fillBarWidthAnchorConstraint;
 
 #define kClass(string) NSClassFromString(string)
+#define rootPathNS(path) JBROOT_PATH_NSSTRING(path)
 
 static void new_setupViews(_UIBatteryView *self, SEL _cmd) {
 
@@ -45,12 +60,14 @@ static void new_setupViews(_UIBatteryView *self, SEL _cmd) {
 	if(![self.linearBattery isDescendantOfView: self]) [self addSubview: self.linearBattery];
 
 	self.linearBar = [self setupUIView];
+	self.linearBar.translatesAutoresizingMaskIntoConstraints = NO;
+
 	self.fillBar = [self setupUIView];
 
 	if(![self.linearBar isDescendantOfView: self]) [self addSubview: self.linearBar];
 	if(![self.fillBar isDescendantOfView: self.linearBar]) [self.linearBar addSubview: self.fillBar];
 
-	NSString *const kImagePath = @"/var/mobile/Documents/LinearRevamped/LRChargingBolt.png";
+	NSString *const kImagePath = rootPathNS(@"/Library/Tweak Support/LinearRevamped/LRChargingBolt.png");
 	UIImage *chargingBoltImage = [UIImage imageWithContentsOfFile: kImagePath];
 	chargingBoltImage = [chargingBoltImage imageWithRenderingMode: UIImageRenderingModeAlwaysTemplate];
 
@@ -66,8 +83,6 @@ static void new_setupViews(_UIBatteryView *self, SEL _cmd) {
 	[self.linearBar.topAnchor constraintEqualToAnchor: self.linearBattery.bottomAnchor constant: 0.5].active = YES;
 	[self.linearBar.widthAnchor constraintEqualToConstant: 26].active = YES;
 	[self.linearBar.heightAnchor constraintEqualToConstant: 3.5].active = YES;
-
-	[self.fillBar.heightAnchor constraintEqualToConstant: 3.5].active = YES;
 
 	[self.linearBattery.topAnchor constraintEqualToAnchor: self.topAnchor].active = YES;
 	[self.linearBattery.centerXAnchor constraintEqualToAnchor: self.linearBar.centerXAnchor].active = YES;
@@ -93,9 +108,7 @@ static void new_updateViews(_UIBatteryView *self, SEL _cmd) {
 
 	self.linearBattery.text = [NSString stringWithFormat:@"%0.f%%", currentBattery];
 
-	fillBarWidthAnchorConstraint.active = NO;
-	fillBarWidthAnchorConstraint = [self.fillBar.widthAnchor constraintEqualToConstant: floor((currentBattery / 100) * 26)];
-	fillBarWidthAnchorConstraint.active = YES;
+	self.fillBar.frame = CGRectMake(0, 0, floor((currentBattery / 100) * 26), 3.5);
 
 }
 
@@ -114,7 +127,6 @@ static UIView *new_setupUIView(_UIBatteryView *self, SEL _cmd) {
 	UIView *view = [UIView new];
 	view.layer.cornerCurve = kCACornerCurveContinuous;
 	view.layer.cornerRadius = 2;
-	view.translatesAutoresizingMaskIntoConstraints = NO;
 	return view;
 
 }
@@ -131,39 +143,60 @@ static void new_animateViewWithViews(
 
 		fillBar.backgroundColor = currentFillColor;
 		linearBar.backgroundColor = currentLinearColor;
-		self.chargingBoltImageView.alpha = isCharging ? 1 : 0;
+		self.chargingBoltImageView.alpha = self.chargingState == 1 ? 1 : 0;
 
 	} completion:nil];
 
 }
 
-static void (*origSetChargingState)(_UIBatteryView *self, SEL _cmd, NSInteger);
-static void overrideSetChargingState(_UIBatteryView *self, SEL _cmd, NSInteger state) {
+static id (*origIWF)(_UIBatteryView *, SEL, CGRect);
+static id overrideIWF(_UIBatteryView *self, SEL _cmd, CGRect frame) {
 
-	origSetChargingState(self, _cmd, state);
-	isCharging = state == 1;
-
-	[self updateColors];
-
-}
-
-static void (*origCommonInit)(_UIBatteryView *self, SEL _cmd);
-static void overrideCommonInit(_UIBatteryView *self, SEL _cmd) {
-
-	origCommonInit(self, _cmd);
-	[[UIDevice currentDevice] setBatteryMonitoringEnabled: YES];
-
-	[NSNotificationCenter.defaultCenter removeObserver:self];
-	[NSNotificationCenter.defaultCenter addObserver:self selector:@selector(updateViews) name:UIDeviceBatteryLevelDidChangeNotification object:nil];
+	id orig = origIWF(self, _cmd, frame);
 
 	[self setupViews];
 	[self updateViews];
+
+	[[UIDevice currentDevice] setBatteryMonitoringEnabled: YES];
+
+	[NSNotificationCenter.defaultCenter addObserver:self selector:@selector(updateViews) name:UIDeviceBatteryLevelDidChangeNotification object:nil];
+
+	return orig;
+
+}
+
+static id (*origStatusBarWindowIWF)(UIStatusBarWindow *, SEL, CGRect);
+static id overrideStatusBarWindowIWF(UIStatusBarWindow *self, SEL _cmd, CGRect frame) {
+
+	id orig = origStatusBarWindowIWF(self, _cmd, frame);
+
+	UISwipeGestureRecognizer *swipeRecognizer = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(lr_didSwipeLeft)];
+	swipeRecognizer.direction = UISwipeGestureRecognizerDirectionLeft;
+	[self addGestureRecognizer: swipeRecognizer];
+
+	return orig;
+
+}
+
+// credits & slightly modified from ⇝ https://github.com/MTACS/Ampere/blob/059f2f6dcbf4c55b5fd343b96303603b5ee466ff/Ampere.xm#L253
+static void lr_didSwipeLeft(UIStatusBarWindow *self, SEL _cmd) {
+
+	if(kClass(@"_PMLowPowerMode")) {
+		BOOL active = [[kClass(@"_PMLowPowerMode") sharedInstance] getPowerMode] == 1;
+		[[kClass(@"_PMLowPowerMode") sharedInstance] setPowerMode:!active fromSource: @"SpringBoard"];
+	}
+
+	else {
+		NSInteger state = [[kClass(@"_CDBatterySaver") batterySaver] getPowerMode];
+		if(state == 0) [[kClass(@"_CDBatterySaver") batterySaver] setPowerMode:1 error: nil];
+		else if(state == 1) [[kClass(@"_CDBatterySaver") batterySaver] setPowerMode:0 error: nil];
+	}	
 
 }
 
 static UIImageView *overrideChargingView(_UIStatusBarBatteryItem *self, SEL _cmd) { return [UIImageView new]; }
 
-static void (*origSetText)(_UIStatusBarStringView *self, SEL _cmd, NSString *);
+static void (*origSetText)(_UIStatusBarStringView *, SEL, NSString *);
 static void overrideSetText(_UIStatusBarStringView *self, SEL _cmd, NSString *text) {
 
 	if([text containsString: @"%"]) return origSetText(self, _cmd, @"");
@@ -176,13 +209,17 @@ static void overrideSetText(_UIStatusBarStringView *self, SEL _cmd, NSString *te
 // - (UIColor *)pinColor;
 // - (BOOL)shouldShowBolt;
 
-static UIColor *(*origBFC)(_UIBatteryView *self, SEL _cmd);
+static UIColor *(*origBFC)(_UIBatteryView *, SEL);
 static UIColor *overrideBFC(_UIBatteryView *self, SEL _cmd) {
 
-	stockColor = [origBFC(self, _cmd) colorWithAlphaComponent: 1];
+	if(self.saverModeActive || self.chargingState == 1)
+		stockColor = [origBFC(self, _cmd) colorWithAlphaComponent: 1];
+
+	else stockColor = [UIColor colorWithHue:([UIDevice currentDevice].batteryLevel * .333) saturation:1 brightness:1 alpha: 1.0];
+
 	[self updateColors];
 
-    return UIColor.clearColor; 
+	return UIColor.clearColor;
 
 }
 
@@ -191,10 +228,6 @@ static UIColor *overridePC(_UIBatteryView *self, SEL _cmd) { return UIColor.clea
 static BOOL overrideSSB(_UIBatteryView *self, SEL _cmd) { return NO; }
 
 // getters and setters
-
-/*--- sadly we can't use class_addProperty here since 
-we need a backing ivar, and we can't add ivars to an
-existing class at runtime ---*/
 
 static UIView *new_linearBar(_UIBatteryView *self, SEL _cmd) {
 
@@ -244,17 +277,16 @@ static void new_setChargingBoltImageView(_UIBatteryView *self, SEL _cmd, UIImage
 
 }
 
+__attribute__((constructor)) static void init(void) {
 
-__attribute__((constructor)) static void init() {
-
-	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(_commonInit), (IMP) &overrideCommonInit, (IMP *) &origCommonInit);
-	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(setChargingState:), (IMP) &overrideSetChargingState, (IMP *) &origSetChargingState);
+	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(initWithFrame:), (IMP) &overrideIWF, (IMP *) &origIWF);
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(_shouldShowBolt), (IMP) &overrideSSB, (IMP *) NULL);
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(_batteryFillColor), (IMP) &overrideBFC, (IMP *) &origBFC);
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(bodyColor), (IMP) &overrideBC, (IMP *) NULL);
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(pinColor), (IMP) &overridePC, (IMP *) NULL);
-	MSHookMessageEx(kClass(@"_UIStatusBarBatteryItem"), @selector(chargingView), (IMP) &overrideChargingView, (IMP *) NULL);
+	MSHookMessageEx(kClass(@"UIStatusBarWindow"), @selector(initWithFrame:), (IMP) &overrideStatusBarWindowIWF, (IMP *) &origStatusBarWindowIWF);
 	MSHookMessageEx(kClass(@"_UIStatusBarStringView"), @selector(setText:), (IMP) &overrideSetText, (IMP *) &origSetText);
+	MSHookMessageEx(kClass(@"_UIStatusBarBatteryItem"), @selector(chargingView), (IMP) &overrideChargingView, (IMP *) NULL);
 
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(linearBar), (IMP) &new_linearBar, "@@:");
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(setLinearBar:), (IMP) &new_setLinearBar, "v@:@");
@@ -270,5 +302,6 @@ __attribute__((constructor)) static void init() {
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(updateColors), (IMP) &new_updateColors, "v@:");
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(setupUIView), (IMP) &new_setupUIView, "@@:");
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(animateViewWithViews:linearBar:currentFillColor:currentLinearColor:), (IMP) &new_animateViewWithViews, "v@:@@@@");
+	class_addMethod(kClass(@"UIStatusBarWindow"), @selector(lr_didSwipeLeft), (IMP) &lr_didSwipeLeft, "v@:");
 
 }
