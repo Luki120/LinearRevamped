@@ -17,7 +17,7 @@
 @end
 
 
-@interface UIStatusBarWindow : UIWindow
+@interface _UIStatusBarForegroundView : UIView
 @end
 
 
@@ -26,7 +26,6 @@
 @property (nonatomic, strong) UIView *linearBar;
 @property (nonatomic, strong) UILabel *linearBattery;
 @property (nonatomic, strong) UIImageView *chargingBoltImageView;
-@property (nonatomic, assign) CGFloat chargePercent;
 @property (nonatomic, assign) NSInteger chargingState;
 @property (nonatomic, assign) BOOL saverModeActive;
 - (void)setupViews;
@@ -43,11 +42,36 @@
 @class _UIStatusBarBatteryItem;
 @class _UIStatusBarStringView;
 
+static BOOL isHueColoringEnabled;
 static float currentBattery;
 static UIColor *stockColor;
 
-#define kClass(string) NSClassFromString(string)
+static NSNotificationName const LinearRevampedDidToggleHueColoringNotification = @"LinearRevampedDidToggleHueColoringNotification";
+
 #define rootPathNS(path) JBROOT_PATH_NSSTRING(path)
+#define kClass(string) NSClassFromString(string)
+#define kLinearExists [[NSFileManager defaultManager] fileExistsAtPath: rootPathNS(@"/Library/Themes/Linear.theme")]
+
+static BOOL isNotchedDevice(void) {
+
+	BOOL isNotchedDevice;
+	NSSet *connectedScenes = [UIApplication sharedApplication].connectedScenes;
+
+	for(UIScene *scene in connectedScenes) {
+		if(scene.activationState != UISceneActivationStateForegroundActive
+			|| ![scene isKindOfClass:[UIWindowScene class]]) return NO;
+
+		UIWindowScene *windowScene = (UIWindowScene *)scene;
+		for(UIWindow *window in windowScene.windows) {
+			isNotchedDevice = window.safeAreaInsets.top > 0;
+			break;
+		}
+
+	}
+
+	return isNotchedDevice;
+
+}
 
 static void new_setupViews(_UIBatteryView *self, SEL _cmd) {
 
@@ -84,7 +108,7 @@ static void new_setupViews(_UIBatteryView *self, SEL _cmd) {
 	[self.linearBar.widthAnchor constraintEqualToConstant: 26].active = YES;
 	[self.linearBar.heightAnchor constraintEqualToConstant: 3.5].active = YES;
 
-	[self.linearBattery.topAnchor constraintEqualToAnchor: self.topAnchor].active = YES;
+	[self.linearBattery.topAnchor constraintEqualToAnchor: self.topAnchor constant: isNotchedDevice() && kLinearExists ? 1.5 : 0].active = YES;
 	[self.linearBattery.centerXAnchor constraintEqualToAnchor: self.linearBar.centerXAnchor].active = YES;
 
 	[self.chargingBoltImageView.centerYAnchor constraintEqualToAnchor: self.linearBattery.centerYAnchor].active = YES;
@@ -159,27 +183,32 @@ static id overrideIWF(_UIBatteryView *self, SEL _cmd, CGRect frame) {
 
 	[[UIDevice currentDevice] setBatteryMonitoringEnabled: YES];
 
+	[NSNotificationCenter.defaultCenter addObserver:self selector:@selector(_batteryFillColor) name:LinearRevampedDidToggleHueColoringNotification object:nil];
 	[NSNotificationCenter.defaultCenter addObserver:self selector:@selector(updateViews) name:UIDeviceBatteryLevelDidChangeNotification object:nil];
 
 	return orig;
 
 }
 
-static id (*origStatusBarWindowIWF)(UIStatusBarWindow *, SEL, CGRect);
-static id overrideStatusBarWindowIWF(UIStatusBarWindow *self, SEL _cmd, CGRect frame) {
+static id (*origStatusBarForegroundViewIWF)(_UIStatusBarForegroundView *, SEL, CGRect);
+static id overrideStatusBarForegroundViewIWF(_UIStatusBarForegroundView *self, SEL _cmd, CGRect frame) {
 
-	id orig = origStatusBarWindowIWF(self, _cmd, frame);
+	id orig = origStatusBarForegroundViewIWF(self, _cmd, frame);
 
 	UISwipeGestureRecognizer *swipeRecognizer = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(lr_didSwipeLeft)];
 	swipeRecognizer.direction = UISwipeGestureRecognizerDirectionLeft;
 	[self addGestureRecognizer: swipeRecognizer];
+
+	UITapGestureRecognizer *tapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(lr_didTap)];
+	tapRecognizer.numberOfTapsRequired = 2;
+	[self addGestureRecognizer: tapRecognizer];
 
 	return orig;
 
 }
 
 // credits & slightly modified from ⇝ https://github.com/MTACS/Ampere/blob/059f2f6dcbf4c55b5fd343b96303603b5ee466ff/Ampere.xm#L253
-static void lr_didSwipeLeft(UIStatusBarWindow *self, SEL _cmd) {
+static void lr_didSwipeLeft(_UIStatusBarForegroundView *self, SEL _cmd) {
 
 	if(kClass(@"_PMLowPowerMode")) {
 		BOOL active = [[kClass(@"_PMLowPowerMode") sharedInstance] getPowerMode] == 1;
@@ -191,6 +220,15 @@ static void lr_didSwipeLeft(UIStatusBarWindow *self, SEL _cmd) {
 		if(state == 0) [[kClass(@"_CDBatterySaver") batterySaver] setPowerMode:1 error: nil];
 		else if(state == 1) [[kClass(@"_CDBatterySaver") batterySaver] setPowerMode:0 error: nil];
 	}	
+
+}
+
+static void lr_didTap(_UIStatusBarForegroundView *self, SEL _cmd) {
+
+	isHueColoringEnabled = !isHueColoringEnabled;
+
+	[[NSUserDefaults standardUserDefaults] setBool:isHueColoringEnabled forKey: @"lrIsHueColoringEnabled"];
+	[NSNotificationCenter.defaultCenter postNotificationName:LinearRevampedDidToggleHueColoringNotification object:nil];
 
 }
 
@@ -212,10 +250,14 @@ static void overrideSetText(_UIStatusBarStringView *self, SEL _cmd, NSString *te
 static UIColor *(*origBFC)(_UIBatteryView *, SEL);
 static UIColor *overrideBFC(_UIBatteryView *self, SEL _cmd) {
 
-	if(self.saverModeActive || self.chargingState == 1)
-		stockColor = [origBFC(self, _cmd) colorWithAlphaComponent: 1];
+	if([[NSUserDefaults standardUserDefaults] boolForKey: @"lrIsHueColoringEnabled"]) {
+		if(self.saverModeActive || self.chargingState == 1)
+			stockColor = [origBFC(self, _cmd) colorWithAlphaComponent: 1];
 
-	else stockColor = [UIColor colorWithHue:([UIDevice currentDevice].batteryLevel * .333) saturation:1 brightness:1 alpha: 1.0];
+		else stockColor = [UIColor colorWithHue:([UIDevice currentDevice].batteryLevel * .333) saturation:1 brightness:1 alpha: 1.0];
+	}
+
+	else stockColor = [origBFC(self, _cmd) colorWithAlphaComponent: 1];
 
 	[self updateColors];
 
@@ -284,9 +326,9 @@ __attribute__((constructor)) static void init(void) {
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(_batteryFillColor), (IMP) &overrideBFC, (IMP *) &origBFC);
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(bodyColor), (IMP) &overrideBC, (IMP *) NULL);
 	MSHookMessageEx(kClass(@"_UIBatteryView"), @selector(pinColor), (IMP) &overridePC, (IMP *) NULL);
-	MSHookMessageEx(kClass(@"UIStatusBarWindow"), @selector(initWithFrame:), (IMP) &overrideStatusBarWindowIWF, (IMP *) &origStatusBarWindowIWF);
-	MSHookMessageEx(kClass(@"_UIStatusBarStringView"), @selector(setText:), (IMP) &overrideSetText, (IMP *) &origSetText);
 	MSHookMessageEx(kClass(@"_UIStatusBarBatteryItem"), @selector(chargingView), (IMP) &overrideChargingView, (IMP *) NULL);
+	MSHookMessageEx(kClass(@"_UIStatusBarForegroundView"), @selector(initWithFrame:), (IMP) &overrideStatusBarForegroundViewIWF, (IMP *) &origStatusBarForegroundViewIWF);
+	MSHookMessageEx(kClass(@"_UIStatusBarStringView"), @selector(setText:), (IMP) &overrideSetText, (IMP *) &origSetText);
 
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(linearBar), (IMP) &new_linearBar, "@@:");
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(setLinearBar:), (IMP) &new_setLinearBar, "v@:@");
@@ -302,6 +344,7 @@ __attribute__((constructor)) static void init(void) {
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(updateColors), (IMP) &new_updateColors, "v@:");
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(setupUIView), (IMP) &new_setupUIView, "@@:");
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(animateViewWithViews:linearBar:currentFillColor:currentLinearColor:), (IMP) &new_animateViewWithViews, "v@:@@@@");
-	class_addMethod(kClass(@"UIStatusBarWindow"), @selector(lr_didSwipeLeft), (IMP) &lr_didSwipeLeft, "v@:");
+	class_addMethod(kClass(@"_UIStatusBarForegroundView"), @selector(lr_didSwipeLeft), (IMP) &lr_didSwipeLeft, "v@:");
+	class_addMethod(kClass(@"_UIStatusBarForegroundView"), @selector(lr_didTap), (IMP) &lr_didTap, "v@:");
 
 }

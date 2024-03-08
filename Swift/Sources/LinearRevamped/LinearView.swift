@@ -1,4 +1,3 @@
-import libroot
 import UIKit
 
 
@@ -97,7 +96,6 @@ final class LinearView: UIView {
 			views[1].backgroundColor = linearColor
 			self.chargingBoltImageView.alpha = BatteryState.isCharging ? 1 : 0
 		}
-
 	}
 
 	// ! Selectors
@@ -126,24 +124,6 @@ final class LinearView: UIView {
 		widthAnchorConstraint?.isActive = false
 		widthAnchorConstraint = fillBar.widthAnchor.constraint(equalToConstant: floor((currentBattery / 100) * 26))
 		widthAnchorConstraint?.isActive = true
-
-	}
-
-	// ! Rootless support
-
-	// https://gist.github.com/leptos-null/4098d557ffab3d0edd8c1b4eab19c06d
-	private func jbRootPath(_ cPath: UnsafePointer<CChar>?) -> String {
-		String(unsafeUninitializedCapacity: Int(PATH_MAX)) { buffer in
-			guard let resolved = libroot_dyn_jbrootpath(cPath, buffer.baseAddress) else { return 0 }
-			return strlen(resolved)
-		}
-	}
-
-	@_disfavoredOverload
-	private func jbRootPath<S: StringProtocol>(_ path: S) -> String {
-		path.withCString { cPath in
-			jbRootPath(cPath)
-		}
 	}
 
 }
