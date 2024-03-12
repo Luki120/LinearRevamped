@@ -1,4 +1,5 @@
 @import CydiaSubstrate;
+@import LocalAuthentication;
 @import libroot;
 @import UIKit;
 
@@ -48,67 +49,63 @@ static UIColor *stockColor;
 
 static NSNotificationName const LinearRevampedDidToggleHueColoringNotification = @"LinearRevampedDidToggleHueColoringNotification";
 
-#define rootPathNS(path) JBROOT_PATH_NSSTRING(path)
+#define jbRootPath(path) JBROOT_PATH_NSSTRING(path)
 #define kClass(string) NSClassFromString(string)
-#define kLinearExists [[NSFileManager defaultManager] fileExistsAtPath: rootPathNS(@"/Library/Themes/Linear.theme")]
+#define kLinearExists [[NSFileManager defaultManager] fileExistsAtPath: jbRootPath(@"/Library/Themes/Linear.theme")]
 
 static BOOL isNotchedDevice(void) {
 
-	BOOL isNotchedDevice;
-	NSSet *connectedScenes = [UIApplication sharedApplication].connectedScenes;
+	LAContext *context = [LAContext new];
+	if(![context canEvaluatePolicy:LAPolicyDeviceOwnerAuthenticationWithBiometrics error:nil]) return NO;
 
-	for(UIScene *scene in connectedScenes) {
-		if(scene.activationState != UISceneActivationStateForegroundActive
-			|| ![scene isKindOfClass:[UIWindowScene class]]) return NO;
-
-		UIWindowScene *windowScene = (UIWindowScene *)scene;
-		for(UIWindow *window in windowScene.windows) {
-			isNotchedDevice = window.safeAreaInsets.top > 0;
-			break;
-		}
-
-	}
-
-	return isNotchedDevice;
+	return [context biometryType] == LABiometryTypeFaceID;
 
 }
 
 static void new_setupViews(_UIBatteryView *self, SEL _cmd) {
 
-	self.linearBattery = [UILabel new];
-	self.linearBattery.font = [UIFont boldSystemFontOfSize: 7];
-	self.linearBattery.text = [NSString stringWithFormat:@"%0.f%%", currentBattery];
-	self.linearBattery.textColor = UIColor.labelColor;
-	self.linearBattery.textAlignment = NSTextAlignmentCenter;
-	self.linearBattery.translatesAutoresizingMaskIntoConstraints = NO;
-	if(![self.linearBattery isDescendantOfView: self]) [self addSubview: self.linearBattery];
+	if(!self.linearBattery) {
+		self.linearBattery = [UILabel new];
+		self.linearBattery.font = [UIFont boldSystemFontOfSize: 7];
+		self.linearBattery.text = [NSString stringWithFormat:@"%0.f%%", currentBattery];
+		self.linearBattery.textColor = UIColor.labelColor;
+		self.linearBattery.textAlignment = NSTextAlignmentCenter;
+		self.linearBattery.translatesAutoresizingMaskIntoConstraints = NO;
+		[self addSubview: self.linearBattery];
+	}
 
-	self.linearBar = [self setupUIView];
-	self.linearBar.translatesAutoresizingMaskIntoConstraints = NO;
+	if(!self.linearBar) {
+		self.linearBar = [self setupUIView];
+		self.linearBar.translatesAutoresizingMaskIntoConstraints = NO;
+		[self addSubview: self.linearBar];
+	}
 
-	self.fillBar = [self setupUIView];
+	if(!self.fillBar) {
+		self.fillBar = [self setupUIView];
+		[self.linearBar addSubview: self.fillBar];
+	}
 
-	if(![self.linearBar isDescendantOfView: self]) [self addSubview: self.linearBar];
-	if(![self.fillBar isDescendantOfView: self.linearBar]) [self.linearBar addSubview: self.fillBar];
+	if(!self.chargingBoltImageView) {
+		NSString *const kImagePath = jbRootPath(@"/Library/Tweak Support/LinearRevamped/LRChargingBolt.png");
+		UIImage *const chargingBoltImage = [[UIImage imageWithContentsOfFile: kImagePath] imageWithRenderingMode: UIImageRenderingModeAlwaysTemplate];
 
-	NSString *const kImagePath = rootPathNS(@"/Library/Tweak Support/LinearRevamped/LRChargingBolt.png");
-	UIImage *chargingBoltImage = [UIImage imageWithContentsOfFile: kImagePath];
-	chargingBoltImage = [chargingBoltImage imageWithRenderingMode: UIImageRenderingModeAlwaysTemplate];
-
-	self.chargingBoltImageView = [UIImageView new];
-	self.chargingBoltImageView.alpha = 0;
-	self.chargingBoltImageView.image = chargingBoltImage;
-	self.chargingBoltImageView.tintColor = UIColor.labelColor;
-	self.chargingBoltImageView.clipsToBounds = YES;
-	self.chargingBoltImageView.translatesAutoresizingMaskIntoConstraints = NO;
-	if(![self.chargingBoltImageView isDescendantOfView: self]) [self addSubview: self.chargingBoltImageView];
+		self.chargingBoltImageView = [UIImageView new];
+		self.chargingBoltImageView.alpha = 0;
+		self.chargingBoltImageView.image = chargingBoltImage;
+		self.chargingBoltImageView.tintColor = UIColor.labelColor;
+		self.chargingBoltImageView.clipsToBounds = YES;
+		self.chargingBoltImageView.translatesAutoresizingMaskIntoConstraints = NO;
+		[self addSubview: self.chargingBoltImageView];
+	}
 
 	// layout
 	[self.linearBar.topAnchor constraintEqualToAnchor: self.linearBattery.bottomAnchor constant: 0.5].active = YES;
 	[self.linearBar.widthAnchor constraintEqualToConstant: 26].active = YES;
 	[self.linearBar.heightAnchor constraintEqualToConstant: 3.5].active = YES;
 
-	[self.linearBattery.topAnchor constraintEqualToAnchor: self.topAnchor constant: isNotchedDevice() && kLinearExists ? 1.5 : 0].active = YES;
+	CGFloat const topConstant = [[UIDevice currentDevice].systemVersion floatValue] >= 16.0 ? 2 : 1.5;
+
+	[self.linearBattery.topAnchor constraintEqualToAnchor: self.topAnchor constant: isNotchedDevice() && kLinearExists ? topConstant : 0].active = YES;
 	[self.linearBattery.centerXAnchor constraintEqualToAnchor: self.linearBar.centerXAnchor].active = YES;
 
 	[self.chargingBoltImageView.centerYAnchor constraintEqualToAnchor: self.linearBattery.centerYAnchor].active = YES;
@@ -208,7 +205,7 @@ static id overrideStatusBarForegroundViewIWF(_UIStatusBarForegroundView *self, S
 }
 
 // credits & slightly modified from ⇝ https://github.com/MTACS/Ampere/blob/059f2f6dcbf4c55b5fd343b96303603b5ee466ff/Ampere.xm#L253
-static void lr_didSwipeLeft(_UIStatusBarForegroundView *self, SEL _cmd) {
+static void new_lr_didSwipeLeft(_UIStatusBarForegroundView *self, SEL _cmd) {
 
 	if(kClass(@"_PMLowPowerMode")) {
 		BOOL active = [[kClass(@"_PMLowPowerMode") sharedInstance] getPowerMode] == 1;
@@ -223,7 +220,7 @@ static void lr_didSwipeLeft(_UIStatusBarForegroundView *self, SEL _cmd) {
 
 }
 
-static void lr_didTap(_UIStatusBarForegroundView *self, SEL _cmd) {
+static void new_lr_didTap(_UIStatusBarForegroundView *self, SEL _cmd) {
 
 	isHueColoringEnabled = !isHueColoringEnabled;
 
@@ -344,7 +341,7 @@ __attribute__((constructor)) static void init(void) {
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(updateColors), (IMP) &new_updateColors, "v@:");
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(setupUIView), (IMP) &new_setupUIView, "@@:");
 	class_addMethod(kClass(@"_UIBatteryView"), @selector(animateViewWithViews:linearBar:currentFillColor:currentLinearColor:), (IMP) &new_animateViewWithViews, "v@:@@@@");
-	class_addMethod(kClass(@"_UIStatusBarForegroundView"), @selector(lr_didSwipeLeft), (IMP) &lr_didSwipeLeft, "v@:");
-	class_addMethod(kClass(@"_UIStatusBarForegroundView"), @selector(lr_didTap), (IMP) &lr_didTap, "v@:");
+	class_addMethod(kClass(@"_UIStatusBarForegroundView"), @selector(lr_didSwipeLeft), (IMP) &new_lr_didSwipeLeft, "v@:");
+	class_addMethod(kClass(@"_UIStatusBarForegroundView"), @selector(lr_didTap), (IMP) &new_lr_didTap, "v@:");
 
 }

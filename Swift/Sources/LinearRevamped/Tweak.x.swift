@@ -3,16 +3,20 @@ import Orion
 
 class BatteryHook: ClassHook<_UIBatteryView> {
 
-	private let isNotchDevice = UIApplication.shared.delegate?.window??.safeAreaInsets.top ?? 0 > 0
+	private let isNotchedDevice = UIApplication.shared.delegate?.window??.safeAreaInsets.top ?? 0 > 0
 	private let kLinearExists = FileManager.default.fileExists(atPath: jbRootPath("/Library/Themes/Linear.theme"))
+
+	@Property(.nonatomic) private var linearView = LinearView()
 
 	// orion:new
 	func setupViews() {
-		let linearView = LinearView()
 		target.addSubview(linearView)
 
+		let systemVersion = UIDevice.current.systemVersion as NSString
+		let topConstant = systemVersion.floatValue >= 16.0 ? 2 : 1.5
+
 		NSLayoutConstraint.activate([
-			linearView.topAnchor.constraint(equalTo: target.topAnchor, constant: isNotchDevice && kLinearExists ? 1.5 : 0),
+			linearView.topAnchor.constraint(equalTo: target.topAnchor, constant: isNotchedDevice && kLinearExists ? topConstant : 0),
 			linearView.bottomAnchor.constraint(equalTo: target.bottomAnchor),
 			linearView.leadingAnchor.constraint(equalTo: target.leadingAnchor),
 			linearView.trailingAnchor.constraint(equalTo: target.trailingAnchor)
@@ -28,6 +32,8 @@ class BatteryHook: ClassHook<_UIBatteryView> {
 	func setChargingState(_ chargingState: Int) {
 		orig.setChargingState(chargingState)
 		BatteryState.isCharging = chargingState == 1
+
+		NotificationCenter.default.post(name: .didUpdateColorsNotification, object: nil)
 	}
 
 	func _batteryFillColor() -> UIColor {
