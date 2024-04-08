@@ -8,7 +8,7 @@ class BatteryHook: ClassHook<_UIBatteryView> {
 	private let isNotchedDevice = UIApplication.shared.delegate?.window??.safeAreaInsets.top ?? 0 > 0
 	private let kLinearExists = FileManager.default.fileExists(atPath: jbRootPath("/Library/Themes/Linear.theme"))
 
-	@Property(.nonatomic) private var linearView = LinearView()
+	@Property(.nonatomic, .retain) private var linearView = LinearView()
 
 	// orion:new
 	func setupViews() {

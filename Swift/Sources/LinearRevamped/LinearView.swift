@@ -50,7 +50,7 @@ final class LinearView: UIView {
 	private func setupUI() {
 		linearBattery.text = String(format: "%.0f%%", currentBattery)
 
-		let kImagePath = jbRootPath("/Library/Tweak Support/LinearRevamped/LRChargingBolt.png")
+		let kImagePath = jbRootPath("/Library/Tweak Support/LinearRevamped/ChargingBolt.png")
 		guard let boltImage = UIImage(contentsOfFile: kImagePath) else { return }
 		chargingBoltImageView.image = boltImage.withRenderingMode(.alwaysTemplate)
 

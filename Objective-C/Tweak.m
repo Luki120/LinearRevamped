@@ -1,7 +1,7 @@
 @import CydiaSubstrate;
 @import LocalAuthentication;
-@import libroot;
 @import UIKit;
+#import <rootless.h>
 
 
 @interface _CDBatterySaver : NSObject
@@ -49,7 +49,7 @@ static UIColor *stockColor;
 
 static NSNotificationName const LinearRevampedDidToggleHueColoringNotification = @"LinearRevampedDidToggleHueColoringNotification";
 
-#define jbRootPath(path) JBROOT_PATH_NSSTRING(path)
+#define jbRootPath(path) ROOT_PATH_NS(path)
 #define kClass(string) NSClassFromString(string)
 #define kLinearExists [[NSFileManager defaultManager] fileExistsAtPath: jbRootPath(@"/Library/Themes/Linear.theme")]
 
@@ -86,7 +86,7 @@ static void new_setupViews(_UIBatteryView *self, SEL _cmd) {
 	}
 
 	if(!self.chargingBoltImageView) {
-		NSString *const kImagePath = jbRootPath(@"/Library/Tweak Support/LinearRevamped/LRChargingBolt.png");
+		NSString *const kImagePath = jbRootPath(@"/Library/Tweak Support/LinearRevamped/ChargingBolt.png");
 		UIImage *const chargingBoltImage = [[UIImage imageWithContentsOfFile: kImagePath] imageWithRenderingMode: UIImageRenderingModeAlwaysTemplate];
 
 		self.chargingBoltImageView = [UIImageView new];
